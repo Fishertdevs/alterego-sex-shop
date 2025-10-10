@@ -34,7 +34,13 @@ export function Navigation() {
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center space-x-3 hover-scale">
               <Logo size="md" />
-              <span className="text-2xl font-serif font-bold text-foreground tracking-wide">ALTERƎGO</span>
+              <span className="text-2xl font-serif font-bold text-foreground tracking-wide">
+                ALTER
+                <span className="inline-block" style={{ transform: "scaleX(-1)" }}>
+                  E
+                </span>
+                GO
+              </span>
             </Link>
 
             {/* Desktop Navigation */}

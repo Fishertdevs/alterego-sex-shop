@@ -1,16 +1,23 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Playfair_Display } from "next/font/google"
-import { GeistMono } from "geist/font/mono"
+import { Playfair_Display, Montserrat } from "next/font/google"
 import { Suspense } from "react"
 import ClientLayout from "./client-layout"
 import { WhatsAppButton } from "@/components/social/whatsapp-button"
 import "./globals.css"
 
-const didotFont = Playfair_Display({
+const playfairDisplay = Playfair_Display({
   subsets: ["latin"],
-  variable: "--font-didot",
+  variable: "--font-playfair",
   display: "swap",
+  weight: ["400", "500", "600", "700", "800", "900"],
+})
+
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  variable: "--font-montserrat",
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
 })
 
 export const metadata: Metadata = {
@@ -31,7 +38,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`font-serif ${didotFont.variable} ${GeistMono.variable} antialiased`}>
+      <body className={`${playfairDisplay.variable} ${montserrat.variable} font-sans antialiased`}>
         <ClientLayout>
           <Suspense fallback={null}>{children}</Suspense>
           <WhatsAppButton />
