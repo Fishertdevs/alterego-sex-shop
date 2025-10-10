@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button"
 import { ArrowRight } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
 
 export function HeroSection() {
   return (
@@ -27,19 +26,21 @@ export function HeroSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative z-10">
         <div className="text-center">
           <div className="flex justify-center mb-8 animate-fade-in-up">
-            <div className="relative">
-              
-              
-            </div>
+            <div className="relative"></div>
           </div>
 
           <div className="stagger-animation">
             <h1 className="text-5xl md:text-7xl font-serif font-bold text-foreground mb-6 text-balance tracking-wide">
-              {"ALTERƎGO"}
+              ALTER
+              <span className="inline-block" style={{ transform: "scaleX(-1)" }}>
+                E
+              </span>
+              GO
             </h1>
 
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto text-pretty font-serif">
-                 Somos la boutique erótica donde la elegancia se mezcla con la pasión, y el deseo se convierte en experiencias únicas.
+              Somos la boutique erótica donde la elegancia se mezcla con la pasión, y el deseo se convierte en
+              experiencias únicas.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -53,8 +54,6 @@ export function HeroSection() {
                   <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
                 </Link>
               </Button>
-
-              
             </div>
           </div>
         </div>

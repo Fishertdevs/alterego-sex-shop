@@ -21,9 +21,9 @@ const montserrat = Montserrat({
 })
 
 export const metadata: Metadata = {
-  title: "ALTERƎGO - Tienda Íntima de Lujo",
+  title: "ALTEREGO - Tienda Íntima de Lujo",
   description:
-    "Descubre tu alter ego con nuestra exclusiva colección de productos íntimos de lujo. ALTERƎGO, donde la elegancia se encuentra con la sensualidad.",
+    "Descubre tu alter ego con nuestra exclusiva colección de productos íntimos de lujo. ALTEREGO, donde la elegancia se encuentra con la sensualidad.",
   generator: "v0.app",
   icons: {
     icon: [{ url: "/favicon.ico" }, { url: "/alterego-logo-symbol.png", sizes: "any", type: "image/png" }],

@@ -15,7 +15,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(false)
-      setTimeout(onComplete, 500) // Wait for fade out animation
+      setTimeout(onComplete, 500)
     }, 5000)
 
     return () => clearTimeout(timer)
@@ -36,7 +36,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
         <div className="relative w-32 h-32 mx-auto animate-float">
           <Image
             src={theme === "dark" ? "/alterego-logo-symbol.png" : "/alterego-logo-light.png"}
-            alt="ALTERƎGO"
+            alt="ALTEREGO"
             fill
             className="object-contain"
             priority
@@ -45,7 +45,13 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
 
         {/* Brand Name */}
         <div className="space-y-4">
-          <h1 className="text-6xl font-serif text-foreground tracking-wider animate-slide-up">ALTERƎGO</h1>
+          <h1 className="text-6xl font-serif text-foreground tracking-wider animate-slide-up">
+            ALTER
+            <span className="inline-block" style={{ transform: "scaleX(-1)" }}>
+              E
+            </span>
+            GO
+          </h1>
 
           {/* Captivating Slogan */}
           <p className="text-xl text-muted-foreground font-light tracking-wide animate-slide-up-delay max-w-md mx-auto">

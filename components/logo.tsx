@@ -21,7 +21,7 @@ export function Logo({ className = "", size = "md" }: LogoProps) {
     <div className={`relative ${sizeClasses[size]} ${className}`}>
       <Image
         src={theme === "dark" ? "/alterego-logo-symbol.png" : "/alterego-logo-light.png"}
-        alt="ALTERƎGO"
+        alt="ALTEREGO"
         fill
         className="object-contain transition-opacity duration-300"
         priority
