@@ -22,8 +22,27 @@ export default function AdminPage() {
   const [recentActivity, setRecentActivity] = useState<any[]>([])
 
   useEffect(() => {
-    if (!isLoading && (!user || !user.isAdmin)) {
-      router.push("/")
+    console.log("[v0] Admin page - isLoading:", isLoading)
+    console.log("[v0] Admin page - user:", user)
+
+    // Verificar localStorage directamente como fallback
+    const storedUser = localStorage.getItem("alterego-user")
+    console.log("[v0] Admin page - localStorage user:", storedUser)
+
+    if (!isLoading) {
+      // Verificar tanto el contexto como localStorage
+      const isAdminFromContext = user?.isAdmin === true
+      const isAdminFromStorage = storedUser ? JSON.parse(storedUser).isAdmin === true : false
+
+      console.log("[v0] Admin page - isAdminFromContext:", isAdminFromContext)
+      console.log("[v0] Admin page - isAdminFromStorage:", isAdminFromStorage)
+
+      if (!isAdminFromContext && !isAdminFromStorage) {
+        console.log("[v0] Admin page - Not admin, redirecting to /")
+        router.push("/")
+      } else {
+        console.log("[v0] Admin page - Admin verified, showing dashboard")
+      }
     }
   }, [user, isLoading, router])
 
@@ -92,6 +111,7 @@ export default function AdminPage() {
   }
 
   if (isLoading) {
+    console.log("[v0] Admin page - Loading...")
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-accent"></div>
@@ -99,7 +119,13 @@ export default function AdminPage() {
     )
   }
 
-  if (!user || !user.isAdmin) {
+  const storedUser = localStorage.getItem("alterego-user")
+  const isAdmin = user?.isAdmin || (storedUser ? JSON.parse(storedUser).isAdmin : false)
+
+  console.log("[v0] Admin page - Final isAdmin check:", isAdmin)
+
+  if (!isAdmin) {
+    console.log("[v0] Admin page - Not admin, returning null")
     return null
   }
 

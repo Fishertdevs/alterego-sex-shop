@@ -37,12 +37,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check for stored user session
-    const storedUser = localStorage.getItem(STORAGE_KEY)
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
+    console.log("[v0] AuthContext - Initializing...")
+
+    try {
+      const storedUser = localStorage.getItem(STORAGE_KEY)
+      console.log("[v0] AuthContext - Stored user:", storedUser)
+
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser)
+        console.log("[v0] AuthContext - Parsed user:", parsedUser)
+        setUser(parsedUser)
+      } else {
+        console.log("[v0] AuthContext - No stored user found")
+      }
+    } catch (error) {
+      console.error("[v0] AuthContext - Error loading user:", error)
     }
+
     setIsLoading(false)
+    console.log("[v0] AuthContext - Initialization complete")
   }, [])
 
   const login = async (email: string, password: string): Promise<boolean> => {

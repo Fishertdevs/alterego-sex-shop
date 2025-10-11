@@ -49,6 +49,8 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     setSuccess("")
 
     if (isAdminEmail) {
+      console.log("[v0] Admin login detected for:", loginData.email)
+
       const adminUser = {
         id: "admin-001",
         email: "altergo102@gmail.com",
@@ -56,13 +58,36 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
         isAdmin: true,
       }
 
-      localStorage.setItem("alterego-user", JSON.stringify(adminUser))
-      if (rememberMe) {
-        localStorage.setItem("alterego-remember", "true")
+      try {
+        localStorage.setItem("alterego-user", JSON.stringify(adminUser))
+        console.log("[v0] Admin user saved to localStorage:", adminUser)
+
+        if (rememberMe) {
+          localStorage.setItem("alterego-remember", "true")
+          console.log("[v0] Remember me enabled")
+        }
+
+        // Verificar que se guardó correctamente
+        const savedUser = localStorage.getItem("alterego-user")
+        console.log("[v0] Verification - User in localStorage:", savedUser)
+
+        setSuccess("¡Bienvenido Administrador!")
+
+        // Esperar un momento antes de cerrar y redirigir
+        setTimeout(() => {
+          onClose()
+          console.log("[v0] Redirecting to /admin")
+          router.push("/admin")
+          // Forzar recarga para asegurar que el contexto se actualice
+          window.location.href = "/admin"
+        }, 500)
+
+        return
+      } catch (error) {
+        console.error("[v0] Error saving admin to localStorage:", error)
+        setError("Error al iniciar sesión. Por favor intenta de nuevo.")
+        return
       }
-      onClose()
-      router.push("/admin")
-      return
     }
 
     const success = await login(loginData.email, loginData.password)
