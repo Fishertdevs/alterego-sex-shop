@@ -1,14 +1,13 @@
 "use client"
+import { useState } from "react"
 import { useCart } from "@/contexts/cart-context"
-import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Minus, Plus, Trash2, ShoppingBag, MessageCircle, Instagram, Star } from "lucide-react"
 import Image from "next/image"
-import { useState } from "react"
-import { LoginModal } from "@/components/auth/login-modal"
-import { useRouter } from "next/navigation"
+import { createBrowserClient } from "@/lib/supabase/client"
 
 interface CartDrawerProps {
   isOpen: boolean
@@ -17,26 +16,73 @@ interface CartDrawerProps {
 
 export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const { items, updateQuantity, removeFromCart, total, clearCart } = useCart()
-  const { user } = useAuth()
-  const [showLoginModal, setShowLoginModal] = useState(false)
-  const router = useRouter()
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [showReviewPrompt, setShowReviewPrompt] = useState(false)
+  const [saleChannel, setSaleChannel] = useState<"whatsapp" | "instagram">("whatsapp")
+  const supabase = createBrowserClient()
 
-  const handleCheckout = () => {
-    if (!user) {
-      setShowLoginModal(true)
-      return
+  const generateWhatsAppMessage = () => {
+    const message = `¡Hola! Me interesan los siguientes productos de ALTEREGO:\n\n${items
+      .map(
+        (item) => `• ${item.name} (x${item.quantity}) - $${(item.price * item.quantity).toLocaleString("es-CO")} COP`,
+      )
+      .join("\n")}\n\n*Total: $${total.toLocaleString("es-CO")} COP*\n\n¿Podrían ayudarme con la compra?`
+
+    return encodeURIComponent(message)
+  }
+
+  const handleCheckout = async (channel: "whatsapp" | "instagram") => {
+    setSaleChannel(channel)
+
+    try {
+      const { data: order, error } = await supabase
+        .from("orders")
+        .insert({
+          items: items.map((item) => ({
+            id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+          total,
+          status: "pending",
+          sale_channel: channel,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Crear notificación de nueva venta
+      await supabase.from("notifications").insert({
+        type: "new_sale",
+        title: "Nueva Venta Pendiente",
+        message: `Se ha iniciado una venta por ${channel === "whatsapp" ? "WhatsApp" : "Instagram"} por un total de $${total.toLocaleString("es-CO")} COP`,
+        related_id: order.id,
+      })
+    } catch (error) {
+      console.error("Error creating order:", error)
+    }
+
+    // Redirigir a WhatsApp o Instagram
+    if (channel === "whatsapp") {
+      const whatsappNumber = "573001234567" // TODO: Obtener de configuración
+      const message = generateWhatsAppMessage()
+      window.open(`https://wa.me/${whatsappNumber}?text=${message}`, "_blank")
+    } else {
+      window.open("https://www.instagram.com/direct/t/alterego", "_blank")
     }
 
     onClose()
-    router.push("/checkout")
+    setShowSuccessModal(true)
+    clearCart()
   }
 
-  const handleLoginSuccess = () => {
-    setShowLoginModal(false)
-    onClose()
+  const handleConfirmPurchase = () => {
+    setShowSuccessModal(false)
     setTimeout(() => {
-      router.push("/checkout")
-    }, 300)
+      setShowReviewPrompt(true)
+    }, 500)
   }
 
   return (
@@ -44,7 +90,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       <Sheet open={isOpen} onOpenChange={onClose}>
         <SheetContent className="w-full sm:max-w-lg bg-background border-border">
           <SheetHeader>
-            <SheetTitle className="flex items-center gap-2 text-foreground">
+            <SheetTitle className="flex items-center gap-2 text-foreground font-serif">
               <ShoppingBag className="h-5 w-5" />
               Carrito de Compras
               {items.length > 0 && (
@@ -60,7 +106,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
                   <ShoppingBag className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Tu carrito está vacío</p>
+                  <p className="text-muted-foreground font-serif">Tu carrito está vacío</p>
                 </div>
               </div>
             ) : (
@@ -79,7 +125,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-medium text-foreground truncate">{item.name}</h3>
+                          <h3 className="text-sm font-medium text-foreground truncate font-serif">{item.name}</h3>
                           <p className="text-sm text-muted-foreground">${item.price.toLocaleString("es-CO")} COP</p>
                         </div>
 
@@ -117,18 +163,26 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
                 <div className="border-t border-border pt-4 space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-lg font-semibold text-foreground">Total:</span>
+                    <span className="text-lg font-semibold text-foreground font-serif">Total:</span>
                     <span className="text-lg font-bold text-accent">${total.toLocaleString("es-CO")} COP</span>
                   </div>
 
                   <div className="space-y-2">
                     <Button
-                      onClick={handleCheckout}
-                      className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                      onClick={() => handleCheckout("whatsapp")}
+                      className="w-full bg-[#25D366] hover:bg-[#20BA5A] text-white font-serif"
                     >
-                      {user ? "Proceder al Pago" : "Iniciar Sesión para Pagar"}
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Finalizar por WhatsApp
                     </Button>
-                    <Button variant="outline" onClick={clearCart} className="w-full bg-transparent">
+                    <Button
+                      onClick={() => handleCheckout("instagram")}
+                      className="w-full bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] hover:opacity-90 text-white font-serif"
+                    >
+                      <Instagram className="h-4 w-4 mr-2" />
+                      Finalizar por Instagram
+                    </Button>
+                    <Button variant="outline" onClick={clearCart} className="w-full bg-transparent font-serif">
                       Vaciar Carrito
                     </Button>
                   </div>
@@ -139,11 +193,61 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         </SheetContent>
       </Sheet>
 
-      <LoginModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-        onLoginSuccess={handleLoginSuccess}
-      />
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center font-serif text-2xl">¡Gracias por tu compra!</DialogTitle>
+            <DialogDescription className="text-center space-y-4 pt-4">
+              <div className="flex justify-center">
+                <div className="h-16 w-16 rounded-full bg-green-500/10 flex items-center justify-center">
+                  <ShoppingBag className="h-8 w-8 text-green-500" />
+                </div>
+              </div>
+              <p className="text-base">
+                Hemos recibido tu solicitud de compra. Nos comunicaremos contigo próximamente para confirmar los
+                detalles.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Total: <span className="font-bold text-accent">${total.toLocaleString("es-CO")} COP</span>
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 mt-4">
+            <Button onClick={handleConfirmPurchase} className="w-full font-serif">
+              Entendido
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showReviewPrompt} onOpenChange={setShowReviewPrompt}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center font-serif text-xl">¿Ya recibiste tu pedido?</DialogTitle>
+            <DialogDescription className="text-center space-y-4 pt-4">
+              <div className="flex justify-center">
+                <div className="h-16 w-16 rounded-full bg-accent/10 flex items-center justify-center">
+                  <Star className="h-8 w-8 text-accent" />
+                </div>
+              </div>
+              <p className="text-base">
+                Nos encantaría conocer tu experiencia. ¿Podrías calificar nuestro servicio y producto?
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Tu opinión nos ayuda a mejorar y a que más personas conozcan nuestros productos.
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 mt-4">
+            <Button onClick={() => setShowReviewPrompt(false)} className="w-full font-serif">
+              Dejar Reseña
+            </Button>
+            <Button variant="outline" onClick={() => setShowReviewPrompt(false)} className="w-full font-serif">
+              Más Tarde
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

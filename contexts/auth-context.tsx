@@ -39,27 +39,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     console.log("[v0] AuthContext - Initializing...")
 
-    try {
-      const storedUser = localStorage.getItem(STORAGE_KEY)
-      console.log("[v0] AuthContext - Stored user:", storedUser)
+    const loadUser = () => {
+      try {
+        const storedUser = localStorage.getItem(STORAGE_KEY)
+        console.log("[v0] AuthContext - Stored user:", storedUser)
 
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser)
-        console.log("[v0] AuthContext - Parsed user:", parsedUser)
-        setUser(parsedUser)
-      } else {
-        console.log("[v0] AuthContext - No stored user found")
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser)
+          console.log("[v0] AuthContext - Parsed user:", parsedUser)
+          setUser(parsedUser)
+        } else {
+          console.log("[v0] AuthContext - No stored user found")
+        }
+      } catch (error) {
+        console.error("[v0] AuthContext - Error loading user:", error)
       }
-    } catch (error) {
-      console.error("[v0] AuthContext - Error loading user:", error)
     }
 
+    loadUser()
     setIsLoading(false)
     console.log("[v0] AuthContext - Initialization complete")
+
+    // Listen for storage changes (cross-tab sync)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) {
+        console.log("[v0] AuthContext - Storage changed, reloading user")
+        loadUser()
+      }
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+    }
   }, [])
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true)
+    console.log("[v0] AuthContext - Login attempt for:", email)
 
     // Mock authentication - in production, this would be a real API call
     await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -74,12 +92,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         name: foundUser.name,
         isAdmin: foundUser.isAdmin || false,
       }
+      console.log("[v0] AuthContext - Login successful:", loggedInUser)
       setUser(loggedInUser)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(loggedInUser))
       setIsLoading(false)
       return true
     }
 
+    console.log("[v0] AuthContext - Login failed")
     setIsLoading(false)
     return false
   }
@@ -156,6 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = () => {
+    console.log("[v0] AuthContext - Logging out")
     setUser(null)
     localStorage.removeItem(STORAGE_KEY)
   }

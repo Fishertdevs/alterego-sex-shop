@@ -6,14 +6,13 @@ import { useEffect, useState } from "react"
 import { Navigation } from "@/components/navigation"
 import { AdminStats } from "@/components/admin/admin-stats"
 import { ProductManager } from "@/components/admin/product-manager"
-import { OrdersTable } from "@/components/admin/orders-table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Shield, Package, BarChart3, ShoppingBag, Settings, Users } from "lucide-react"
-import { CustomersManager } from "@/components/admin/customers-manager"
+import { Shield, Package, BarChart3, ShoppingBag, Settings } from "lucide-react"
 import { AnalyticsDashboard } from "@/components/admin/analytics-dashboard"
 import { StoreSettings } from "@/components/admin/store-settings"
+import { NotificationsPanel } from "@/components/admin/notifications-panel"
 import { getAdminOrders, getAdminProducts } from "@/lib/admin-storage"
+import { OrdersCustomersManager } from "@/components/admin/orders-customers-manager"
 
 export default function AdminPage() {
   const { user, isLoading } = useAuth()
@@ -140,11 +139,11 @@ export default function AdminPage() {
               <Shield className="h-8 w-8 text-accent" />
               <h1 className="text-3xl font-bold text-foreground">Panel de Administración</h1>
             </div>
-            <p className="text-muted-foreground">Gestiona tu tienda AlterEgo</p>
+            <p className="text-muted-foreground">Gestiona tu tienda ALTEREGO</p>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6 bg-muted">
+            <TabsList className="grid w-full grid-cols-5 bg-muted">
               <TabsTrigger value="dashboard" className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" />
                 Dashboard
@@ -155,11 +154,7 @@ export default function AdminPage() {
               </TabsTrigger>
               <TabsTrigger value="orders" className="flex items-center gap-2">
                 <ShoppingBag className="h-4 w-4" />
-                Pedidos
-              </TabsTrigger>
-              <TabsTrigger value="customers" className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Clientes
+                Pedidos y Clientes
               </TabsTrigger>
               <TabsTrigger value="analytics" className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" />
@@ -177,31 +172,7 @@ export default function AdminPage() {
                 <div className="lg:col-span-2">
                   <AnalyticsDashboard />
                 </div>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Actividad Reciente</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {recentActivity.length > 0 ? (
-                      <div className="space-y-4">
-                        {recentActivity.map((activity, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                            <div>
-                              <p className="font-medium">{activity.title}</p>
-                              <p className="text-sm text-muted-foreground">{activity.description}</p>
-                            </div>
-                            <span className={`font-semibold ${activity.valueColor}`}>{activity.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <p>No hay actividad reciente</p>
-                        <p className="text-sm mt-2">Comienza agregando productos y procesando pedidos</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                <NotificationsPanel />
               </div>
             </TabsContent>
 
@@ -210,11 +181,7 @@ export default function AdminPage() {
             </TabsContent>
 
             <TabsContent value="orders">
-              <OrdersTable />
-            </TabsContent>
-
-            <TabsContent value="customers">
-              <CustomersManager />
+              <OrdersCustomersManager />
             </TabsContent>
 
             <TabsContent value="analytics">

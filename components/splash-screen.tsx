@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useTheme } from "@/contexts/theme-context"
 import Image from "next/image"
 
 interface SplashScreenProps {
@@ -9,10 +8,14 @@ interface SplashScreenProps {
 }
 
 export function SplashScreen({ onComplete }: SplashScreenProps) {
-  const { theme } = useTheme()
+  const [systemTheme, setSystemTheme] = useState<"dark" | "light">("dark")
   const [isVisible, setIsVisible] = useState(true)
 
   useEffect(() => {
+    // Detect system theme without ThemeProvider
+    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+    setSystemTheme(isDark ? "dark" : "light")
+
     const timer = setTimeout(() => {
       setIsVisible(false)
       setTimeout(onComplete, 500)
@@ -35,7 +38,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
         {/* Logo */}
         <div className="relative w-32 h-32 mx-auto animate-float">
           <Image
-            src={theme === "dark" ? "/alterego-logo-symbol.png" : "/alterego-logo-light.png"}
+            src={systemTheme === "dark" ? "/alterego-logo-symbol.png" : "/alterego-logo-light.png"}
             alt="ALTEREGO"
             fill
             className="object-contain"

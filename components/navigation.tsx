@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -19,6 +19,10 @@ export function Navigation() {
   const { itemCount } = useCart()
   const { user, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
+
+  useEffect(() => {
+    console.log("[v0] Navigation - User state:", user)
+  }, [user])
 
   const navItems = [
     { href: "/", label: "Inicio" },
@@ -82,38 +86,24 @@ export function Navigation() {
                 )}
               </Button>
 
-              {/* User Menu */}
-              {user ? (
+              {user?.isAdmin ? (
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm text-foreground hidden sm:block font-serif">Hola, {user.name}</span>
-                  {user.isAdmin && (
-                    <Link href="/admin">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-accent text-accent hover:bg-accent hover:text-accent-foreground bg-transparent font-serif"
-                      >
-                        Admin
-                      </Button>
-                    </Link>
-                  )}
-                  {!user.isAdmin && (
-                    <Link href="/dashboard">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-accent text-accent hover:bg-accent hover:text-accent-foreground bg-transparent font-serif"
-                      >
-                        Mi Cuenta
-                      </Button>
-                    </Link>
-                  )}
+                  <span className="text-sm text-foreground hidden sm:block font-serif">Bienvenido, Administrador</span>
+                  <Link href="/admin">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-accent text-accent hover:bg-accent hover:text-accent-foreground bg-transparent font-serif"
+                    >
+                      Admin
+                    </Button>
+                  </Link>
                   <Button
                     size="sm"
                     onClick={logout}
                     className="bg-accent hover:bg-accent/90 text-accent-foreground font-serif"
                   >
-                    Salir
+                    Cerrar Sesión
                   </Button>
                 </div>
               ) : (
@@ -122,6 +112,7 @@ export function Navigation() {
                   size="icon"
                   onClick={() => setShowLoginModal(true)}
                   className="text-foreground hover:text-accent hover:bg-accent/10 relative z-10"
+                  title="Acceso administrativo"
                 >
                   <User className="h-5 w-5" />
                 </Button>

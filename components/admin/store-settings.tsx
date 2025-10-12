@@ -1,38 +1,137 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
-import { Store, Mail, Phone, MapPin, DollarSign, Bell, Save, AlertCircle } from "lucide-react"
-import { getAdminSettings, saveAdminSettings, type AdminSettings } from "@/lib/admin-storage"
+import {
+  Store,
+  Mail,
+  Phone,
+  MapPin,
+  DollarSign,
+  Bell,
+  Save,
+  AlertCircle,
+  Instagram,
+  MessageCircle,
+  Facebook,
+} from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { createBrowserClient } from "@/lib/supabase/client"
+
+interface StoreSettings {
+  id?: string
+  store_name: string
+  store_email: string
+  store_phone: string
+  store_address: string
+  instagram_url: string
+  whatsapp_number: string
+  facebook_url: string
+  currency: string
+  tax_rate: number
+  notify_low_stock: boolean
+  low_stock_threshold: number
+  notify_settings_change: boolean
+  notify_new_sale: boolean
+}
 
 export function StoreSettings() {
-  const [settings, setSettings] = useState<AdminSettings>(getAdminSettings())
+  const [settings, setSettings] = useState<StoreSettings>({
+    store_name: "ALTEREGO",
+    store_email: "contacto@alterego.com",
+    store_phone: "+57 300 123 4567",
+    store_address: "Bogotá, Colombia",
+    instagram_url: "https://www.instagram.com/alterego",
+    whatsapp_number: "573001234567",
+    facebook_url: "https://www.facebook.com/alterego",
+    currency: "COP",
+    tax_rate: 19,
+    notify_low_stock: true,
+    low_stock_threshold: 5,
+    notify_settings_change: true,
+    notify_new_sale: true,
+  })
   const [isSaving, setIsSaving] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  const handleSave = () => {
-    setIsSaving(true)
-    saveAdminSettings(settings)
+  const supabase = createBrowserClient()
 
-    setTimeout(() => {
-      setIsSaving(false)
-      setShowSuccess(true)
-      setTimeout(() => setShowSuccess(false), 3000)
-    }, 500)
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  const normalizeSettings = (data: any): StoreSettings => {
+    return {
+      id: data.id,
+      store_name: data.store_name ?? "ALTEREGO",
+      store_email: data.store_email ?? "contacto@alterego.com",
+      store_phone: data.store_phone ?? "+57 300 123 4567",
+      store_address: data.store_address ?? "Bogotá, Colombia",
+      instagram_url: data.instagram_url ?? "",
+      whatsapp_number: data.whatsapp_number ?? "",
+      facebook_url: data.facebook_url ?? "",
+      currency: data.currency ?? "COP",
+      tax_rate: data.tax_rate ?? 19,
+      notify_low_stock: data.notify_low_stock ?? true,
+      low_stock_threshold: data.low_stock_threshold ?? 5,
+      notify_settings_change: data.notify_settings_change ?? true,
+      notify_new_sale: data.notify_new_sale ?? true,
+    }
   }
 
-  const handleReset = () => {
-    if (confirm("¿Estás seguro de que deseas restablecer la configuración a los valores predeterminados?")) {
-      const defaultSettings = getAdminSettings()
-      setSettings(defaultSettings)
-      saveAdminSettings(defaultSettings)
+  const loadSettings = async () => {
+    try {
+      const { data, error } = await supabase.from("store_settings").select("*").limit(1).single()
+
+      if (error) throw error
+      if (data) {
+        setSettings(normalizeSettings(data))
+      }
+    } catch (error) {
+      console.error("Error loading settings:", error)
+    } finally {
+      setIsLoading(false)
     }
+  }
+
+  const handleSave = async () => {
+    setIsSaving(true)
+    try {
+      const { data, error } = await supabase
+        .from("store_settings")
+        .upsert(settings, { onConflict: "id" })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Crear notificación de cambio de configuración
+      if (settings.notify_settings_change) {
+        await supabase.from("notifications").insert({
+          type: "settings_change",
+          title: "Configuración Actualizada",
+          message: "Se han guardado los cambios en la configuración de la tienda.",
+        })
+      }
+
+      setShowSuccess(true)
+      setTimeout(() => setShowSuccess(false), 3000)
+    } catch (error) {
+      console.error("Error saving settings:", error)
+      alert("Error al guardar la configuración")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  if (isLoading) {
+    return <div className="text-center py-8">Cargando configuración...</div>
   }
 
   return (
@@ -58,9 +157,9 @@ export function StoreSettings() {
               <Label htmlFor="storeName">Nombre de la Tienda</Label>
               <Input
                 id="storeName"
-                value={settings.storeName}
-                onChange={(e) => setSettings((prev) => ({ ...prev, storeName: e.target.value }))}
-                placeholder="ALTERƎGO"
+                value={settings.store_name}
+                onChange={(e) => setSettings((prev) => ({ ...prev, store_name: e.target.value }))}
+                placeholder="ALTEREGO"
               />
             </div>
             <div>
@@ -70,8 +169,8 @@ export function StoreSettings() {
                 <Input
                   id="storeEmail"
                   type="email"
-                  value={settings.storeEmail}
-                  onChange={(e) => setSettings((prev) => ({ ...prev, storeEmail: e.target.value }))}
+                  value={settings.store_email}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, store_email: e.target.value }))}
                   className="pl-10"
                   placeholder="contacto@alterego.com"
                 />
@@ -87,8 +186,8 @@ export function StoreSettings() {
                 <Input
                   id="storePhone"
                   type="tel"
-                  value={settings.storePhone}
-                  onChange={(e) => setSettings((prev) => ({ ...prev, storePhone: e.target.value }))}
+                  value={settings.store_phone}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, store_phone: e.target.value }))}
                   className="pl-10"
                   placeholder="+57 300 123 4567"
                 />
@@ -100,10 +199,58 @@ export function StoreSettings() {
                 <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="storeAddress"
-                  value={settings.storeAddress}
-                  onChange={(e) => setSettings((prev) => ({ ...prev, storeAddress: e.target.value }))}
+                  value={settings.store_address}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, store_address: e.target.value }))}
                   className="pl-10"
                   placeholder="Bogotá, Colombia"
+                />
+              </div>
+            </div>
+          </div>
+
+          <Separator className="my-4" />
+
+          <div className="space-y-4">
+            <h4 className="font-semibold text-sm">Redes Sociales</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="instagram">Instagram</Label>
+                <div className="relative">
+                  <Instagram className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="instagram"
+                    value={settings.instagram_url}
+                    onChange={(e) => setSettings((prev) => ({ ...prev, instagram_url: e.target.value }))}
+                    className="pl-10"
+                    placeholder="https://www.instagram.com/alterego"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="whatsapp">WhatsApp (Número)</Label>
+                <div className="relative">
+                  <MessageCircle className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="whatsapp"
+                    value={settings.whatsapp_number}
+                    onChange={(e) => setSettings((prev) => ({ ...prev, whatsapp_number: e.target.value }))}
+                    className="pl-10"
+                    placeholder="573001234567"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Formato: código de país + número (sin +)</p>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="facebook">Facebook</Label>
+              <div className="relative">
+                <Facebook className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="facebook"
+                  value={settings.facebook_url}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, facebook_url: e.target.value }))}
+                  className="pl-10"
+                  placeholder="https://www.facebook.com/alterego"
                 />
               </div>
             </div>
@@ -117,10 +264,10 @@ export function StoreSettings() {
             <DollarSign className="h-5 w-5" />
             Configuración de Precios
           </CardTitle>
-          <CardDescription>Configura la moneda, impuestos y costos de envío</CardDescription>
+          <CardDescription>Configura la moneda e impuestos</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="currency">Moneda</Label>
               <Input
@@ -138,23 +285,9 @@ export function StoreSettings() {
                 min="0"
                 max="100"
                 step="0.1"
-                value={settings.taxRate}
-                onChange={(e) => setSettings((prev) => ({ ...prev, taxRate: Number.parseFloat(e.target.value) || 0 }))}
+                value={settings.tax_rate}
+                onChange={(e) => setSettings((prev) => ({ ...prev, tax_rate: Number.parseFloat(e.target.value) || 0 }))}
                 placeholder="19"
-              />
-            </div>
-            <div>
-              <Label htmlFor="shippingCost">Costo de Envío (COP)</Label>
-              <Input
-                id="shippingCost"
-                type="number"
-                min="0"
-                step="1000"
-                value={settings.shippingCost}
-                onChange={(e) =>
-                  setSettings((prev) => ({ ...prev, shippingCost: Number.parseInt(e.target.value) || 0 }))
-                }
-                placeholder="15000"
               />
             </div>
           </div>
@@ -164,21 +297,19 @@ export function StoreSettings() {
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal:</span>
-                <span>$100,000 COP</span>
+                <span>$100,000 {settings.currency}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Impuesto ({settings.taxRate}%):</span>
-                <span>${(100000 * (settings.taxRate / 100)).toLocaleString("es-CO")} COP</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Envío:</span>
-                <span>${settings.shippingCost.toLocaleString("es-CO")} COP</span>
+                <span className="text-muted-foreground">Impuesto ({settings.tax_rate}%):</span>
+                <span>
+                  ${(100000 * (settings.tax_rate / 100)).toLocaleString("es-CO")} {settings.currency}
+                </span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-between font-bold text-accent">
                 <span>Total:</span>
                 <span>
-                  ${(100000 + 100000 * (settings.taxRate / 100) + settings.shippingCost).toLocaleString("es-CO")} COP
+                  ${(100000 + 100000 * (settings.tax_rate / 100)).toLocaleString("es-CO")} {settings.currency}
                 </span>
               </div>
             </div>
@@ -197,41 +328,17 @@ export function StoreSettings() {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="emailOnNewOrder">Notificar Nuevos Pedidos</Label>
-              <p className="text-sm text-muted-foreground">Recibe un email cuando llegue un nuevo pedido</p>
+              <Label htmlFor="notifyLowStock">Alertas de Stock Bajo</Label>
+              <p className="text-sm text-muted-foreground">Recibe notificaciones cuando un producto tenga poco stock</p>
             </div>
             <Switch
-              id="emailOnNewOrder"
-              checked={settings.notifications.emailOnNewOrder}
-              onCheckedChange={(checked) =>
-                setSettings((prev) => ({
-                  ...prev,
-                  notifications: { ...prev.notifications, emailOnNewOrder: checked },
-                }))
-              }
+              id="notifyLowStock"
+              checked={settings.notify_low_stock}
+              onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, notify_low_stock: checked }))}
             />
           </div>
 
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="emailOnLowStock">Alertas de Stock Bajo</Label>
-              <p className="text-sm text-muted-foreground">Recibe un email cuando un producto tenga poco stock</p>
-            </div>
-            <Switch
-              id="emailOnLowStock"
-              checked={settings.notifications.emailOnLowStock}
-              onCheckedChange={(checked) =>
-                setSettings((prev) => ({
-                  ...prev,
-                  notifications: { ...prev.notifications, emailOnLowStock: checked },
-                }))
-              }
-            />
-          </div>
-
-          {settings.notifications.emailOnLowStock && (
+          {settings.notify_low_stock && (
             <div className="ml-6">
               <Label htmlFor="lowStockThreshold">Umbral de Stock Bajo</Label>
               <Input
@@ -239,15 +346,9 @@ export function StoreSettings() {
                 type="number"
                 min="1"
                 max="100"
-                value={settings.notifications.lowStockThreshold}
+                value={settings.low_stock_threshold}
                 onChange={(e) =>
-                  setSettings((prev) => ({
-                    ...prev,
-                    notifications: {
-                      ...prev.notifications,
-                      lowStockThreshold: Number.parseInt(e.target.value) || 5,
-                    },
-                  }))
+                  setSettings((prev) => ({ ...prev, low_stock_threshold: Number.parseInt(e.target.value) || 5 }))
                 }
                 className="w-32"
               />
@@ -256,6 +357,34 @@ export function StoreSettings() {
               </p>
             </div>
           )}
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="notifySettings">Notificar Cambios de Configuración</Label>
+              <p className="text-sm text-muted-foreground">Recibe notificaciones cuando cambies la configuración</p>
+            </div>
+            <Switch
+              id="notifySettings"
+              checked={settings.notify_settings_change}
+              onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, notify_settings_change: checked }))}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="notifyNewSale">Notificar Nuevas Ventas</Label>
+              <p className="text-sm text-muted-foreground">Recibe notificaciones cuando se realice una venta</p>
+            </div>
+            <Switch
+              id="notifyNewSale"
+              checked={settings.notify_new_sale}
+              onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, notify_new_sale: checked }))}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -263,9 +392,6 @@ export function StoreSettings() {
         <Button onClick={handleSave} disabled={isSaving} className="flex-1">
           <Save className="h-4 w-4 mr-2" />
           {isSaving ? "Guardando..." : "Guardar Configuración"}
-        </Button>
-        <Button variant="outline" onClick={handleReset} className="bg-transparent">
-          Restablecer
         </Button>
       </div>
     </div>
