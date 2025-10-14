@@ -7,10 +7,12 @@ export interface Product {
   id: string
   name: string
   price: number
+  original_price?: number
+  discount?: number
   image: string
   category: string
   description: string
-  inStock: boolean
+  stock: number
   featured?: boolean
 }
 
@@ -49,9 +51,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const addToCart = (product: Product) => {
     setItems((prev) => {
       const existingItem = prev.find((item) => item.id === product.id)
+
       if (existingItem) {
-        return prev.map((item) => (item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item))
+        const newQuantity = existingItem.quantity + 1
+        if (newQuantity > product.stock) {
+          alert(`Solo hay ${product.stock} unidades disponibles de este producto`)
+          return prev
+        }
+        return prev.map((item) => (item.id === product.id ? { ...item, quantity: newQuantity } : item))
       }
+
+      if (product.stock <= 0) {
+        alert("Este producto no está disponible en este momento")
+        return prev
+      }
+
       return [...prev, { ...product, quantity: 1 }]
     })
   }
@@ -65,7 +79,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeFromCart(productId)
       return
     }
-    setItems((prev) => prev.map((item) => (item.id === productId ? { ...item, quantity } : item)))
+
+    setItems((prev) => {
+      const item = prev.find((i) => i.id === productId)
+      if (item && quantity > item.stock) {
+        alert(`Solo hay ${item.stock} unidades disponibles de este producto`)
+        return prev
+      }
+      return prev.map((item) => (item.id === productId ? { ...item, quantity } : item))
+    })
   }
 
   const clearCart = () => {

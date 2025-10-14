@@ -325,3 +325,36 @@
 .stagger-animation > *:nth-child(6) {
   animation-delay: 0.6s;
 }
+
+/* Agregando estilos personalizados para scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.27 0.15 12.17) oklch(0.98 0 0);
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: oklch(0.98 0 0);
+  border-radius: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: oklch(0.27 0.15 12.17);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.35 0.12 12.17);
+}
+
+.dark .scrollbar-thin {
+  scrollbar-color: oklch(0.27 0.15 12.17) oklch(0.11 0 0);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-track {
+  background: oklch(0.11 0 0);
+}

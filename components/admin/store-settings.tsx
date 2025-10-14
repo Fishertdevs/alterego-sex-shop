@@ -7,19 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
-import {
-  Store,
-  Mail,
-  Phone,
-  MapPin,
-  DollarSign,
-  Bell,
-  Save,
-  AlertCircle,
-  Instagram,
-  MessageCircle,
-  Facebook,
-} from "lucide-react"
+import { Store, Mail, Phone, MapPin, DollarSign, Bell, Save, AlertCircle, Instagram, Facebook } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { createBrowserClient } from "@/lib/supabase/client"
 
@@ -30,7 +18,6 @@ interface StoreSettings {
   store_phone: string
   store_address: string
   instagram_url: string
-  whatsapp_number: string
   facebook_url: string
   currency: string
   tax_rate: number
@@ -47,7 +34,6 @@ export function StoreSettings() {
     store_phone: "+57 300 123 4567",
     store_address: "Bogotá, Colombia",
     instagram_url: "https://www.instagram.com/alterego",
-    whatsapp_number: "573001234567",
     facebook_url: "https://www.facebook.com/alterego",
     currency: "COP",
     tax_rate: 19,
@@ -74,7 +60,6 @@ export function StoreSettings() {
       store_phone: data.store_phone ?? "+57 300 123 4567",
       store_address: data.store_address ?? "Bogotá, Colombia",
       instagram_url: data.instagram_url ?? "",
-      whatsapp_number: data.whatsapp_number ?? "",
       facebook_url: data.facebook_url ?? "",
       currency: data.currency ?? "COP",
       tax_rate: data.tax_rate ?? 19,
@@ -105,11 +90,26 @@ export function StoreSettings() {
     try {
       const { data, error } = await supabase
         .from("store_settings")
-        .upsert(settings, { onConflict: "id" })
+        .upsert(
+          {
+            ...settings,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "id" },
+        )
         .select()
         .single()
 
       if (error) throw error
+
+      console.log("[v0] Settings saved successfully:", data)
+      console.log("[v0] Phone number saved:", data?.store_phone)
+
+      window.dispatchEvent(
+        new CustomEvent("store-settings-updated", {
+          detail: { store_phone: settings.store_phone },
+        }),
+      )
 
       // Crear notificación de cambio de configuración
       if (settings.notify_settings_change) {
@@ -180,7 +180,7 @@ export function StoreSettings() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="storePhone">Teléfono</Label>
+              <Label htmlFor="storePhone">Teléfono / WhatsApp</Label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -189,9 +189,12 @@ export function StoreSettings() {
                   value={settings.store_phone}
                   onChange={(e) => setSettings((prev) => ({ ...prev, store_phone: e.target.value }))}
                   className="pl-10"
-                  placeholder="+57 300 123 4567"
+                  placeholder="+57 3168192054"
                 />
               </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Este número se usará para WhatsApp y contacto general
+              </p>
             </div>
             <div>
               <Label htmlFor="storeAddress">Dirección</Label>
@@ -227,31 +230,17 @@ export function StoreSettings() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="whatsapp">WhatsApp (Número)</Label>
+                <Label htmlFor="facebook">Facebook</Label>
                 <div className="relative">
-                  <MessageCircle className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Facebook className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="whatsapp"
-                    value={settings.whatsapp_number}
-                    onChange={(e) => setSettings((prev) => ({ ...prev, whatsapp_number: e.target.value }))}
+                    id="facebook"
+                    value={settings.facebook_url}
+                    onChange={(e) => setSettings((prev) => ({ ...prev, facebook_url: e.target.value }))}
                     className="pl-10"
-                    placeholder="573001234567"
+                    placeholder="https://www.facebook.com/alterego"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Formato: código de país + número (sin +)</p>
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="facebook">Facebook</Label>
-              <div className="relative">
-                <Facebook className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="facebook"
-                  value={settings.facebook_url}
-                  onChange={(e) => setSettings((prev) => ({ ...prev, facebook_url: e.target.value }))}
-                  className="pl-10"
-                  placeholder="https://www.facebook.com/alterego"
-                />
               </div>
             </div>
           </div>

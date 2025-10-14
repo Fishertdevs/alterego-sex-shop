@@ -4,6 +4,8 @@ import { Playfair_Display, Montserrat } from "next/font/google"
 import { Suspense } from "react"
 import ClientLayout from "./client-layout"
 import { WhatsAppButton } from "@/components/social/whatsapp-button"
+import { Footer } from "@/components/footer"
+import { CookieBanner } from "@/components/cookie-banner"
 import "./globals.css"
 
 const playfairDisplay = Playfair_Display({
@@ -42,6 +44,8 @@ export default function RootLayout({
         <ClientLayout>
           <Suspense fallback={null}>{children}</Suspense>
           <WhatsAppButton />
+          <Footer />
+          <CookieBanner />
         </ClientLayout>
       </body>
     </html>

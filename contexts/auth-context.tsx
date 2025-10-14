@@ -25,6 +25,7 @@ interface AuthContextType {
   logout: () => void
   updateProfile: (updates: Partial<User>) => Promise<boolean>
   isLoading: boolean
+  setUserDirectly: (newUser: User | null) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -68,10 +69,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    const handleForceReload = () => {
+      console.log("[v0] AuthContext - Force reload triggered")
+      loadUser()
+    }
+
     window.addEventListener("storage", handleStorageChange)
+    window.addEventListener("auth-reload", handleForceReload)
 
     return () => {
       window.removeEventListener("storage", handleStorageChange)
+      window.removeEventListener("auth-reload", handleForceReload)
     }
   }, [])
 
@@ -181,8 +189,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(STORAGE_KEY)
   }
 
+  const setUserDirectly = (newUser: User | null) => {
+    console.log("[v0] AuthContext - Setting user directly:", newUser)
+    setUser(newUser)
+    if (newUser) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser))
+    } else {
+      localStorage.removeItem(STORAGE_KEY)
+    }
+    // Dispatch custom event to notify other components
+    window.dispatchEvent(new Event("auth-reload"))
+  }
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, updateProfile, isLoading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, updateProfile, isLoading, setUserDirectly }}>
       {children}
     </AuthContext.Provider>
   )

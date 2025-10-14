@@ -1,14 +1,15 @@
 "use client"
 
 import { Navigation } from "@/components/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { ArrowLeft, ShoppingCart } from "lucide-react"
+import { ProductCard } from "@/components/products/product-card"
+import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { getProducts, type SupabaseProduct } from "@/lib/supabase-storage"
+import type { Product } from "@/contexts/cart-context"
+import { createBrowserClient } from "@/lib/supabase/client"
 
-// Category data structure
 const categoriesData = {
   "juguetes-intimos": {
     title: "Juguetes Íntimos",
@@ -90,37 +91,18 @@ const categoriesData = {
   },
 }
 
-// Mock products data - replace with real data later
-const mockProducts = [
-  {
-    id: 1,
-    name: "Producto Ejemplo 1",
-    price: 29.99,
-    image: "/producto-intimo-elegante.jpg",
-    subcategory: "Dildos y Vibradores",
-  },
-  {
-    id: 2,
-    name: "Producto Ejemplo 2",
-    price: 39.99,
-    image: "/producto-intimo-moderno.jpg",
-    subcategory: "Dildos y Vibradores",
-  },
-  {
-    id: 3,
-    name: "Producto Ejemplo 3",
-    price: 24.99,
-    image: "/producto-intimo-premium.jpg",
-    subcategory: "Balas y Huevos vibradores",
-  },
-  {
-    id: 4,
-    name: "Producto Ejemplo 4",
-    price: 49.99,
-    image: "/producto-intimo-lujo.jpg",
-    subcategory: "Balas y Huevos vibradores",
-  },
-]
+function convertToCartProduct(product: SupabaseProduct): Product {
+  return {
+    id: product.id,
+    name: product.name,
+    price: product.price,
+    image: product.images[0] || "/placeholder.svg",
+    category: product.category,
+    description: product.description,
+    stock: product.stock,
+    featured: product.featured,
+  }
+}
 
 export default function CategoryPage({ params }: { params: { categoria: string } }) {
   const categoryData = categoriesData[params.categoria as keyof typeof categoriesData]
@@ -130,9 +112,55 @@ export default function CategoryPage({ params }: { params: { categoria: string }
   }
 
   const [selectedSubcategory, setSelectedSubcategory] = useState(categoryData.subcategories[0])
+  const [products, setProducts] = useState<SupabaseProduct[]>([])
+  const [loading, setLoading] = useState(true)
 
-  // Filter products by selected subcategory
-  const filteredProducts = mockProducts.filter((product) => product.subcategory === selectedSubcategory)
+  useEffect(() => {
+    async function loadProducts() {
+      setLoading(true)
+      console.log("[v0] Loading products from Supabase for category:", params.categoria)
+      const allProducts = await getProducts()
+      console.log("[v0] All products loaded:", allProducts.length)
+
+      // Filtrar por categoría
+      const categoryProducts = allProducts.filter((p) => p.category === params.categoria)
+      console.log("[v0] Products for category:", categoryProducts.length)
+
+      setProducts(categoryProducts)
+      setLoading(false)
+    }
+
+    loadProducts()
+
+    const supabase = createBrowserClient()
+
+    console.log("[v0] Setting up Realtime subscription for products")
+
+    const channel = supabase
+      .channel("products-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*", // Escuchar todos los eventos: INSERT, UPDATE, DELETE
+          schema: "public",
+          table: "products",
+        },
+        (payload) => {
+          console.log("[v0] Product change detected:", payload)
+          // Recargar productos cuando haya cambios
+          loadProducts()
+        },
+      )
+      .subscribe()
+
+    // Cleanup: desuscribirse cuando el componente se desmonte
+    return () => {
+      console.log("[v0] Cleaning up Realtime subscription")
+      supabase.removeChannel(channel)
+    }
+  }, [params.categoria])
+
+  const filteredProducts = products.filter((product) => product.subcategory === selectedSubcategory)
 
   return (
     <main className="min-h-screen">
@@ -140,13 +168,11 @@ export default function CategoryPage({ params }: { params: { categoria: string }
 
       <section className="pt-24 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Back button */}
           <Link href="/productos" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-8">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver a Productos
           </Link>
 
-          {/* Category header */}
           <div className="mb-12 animate-fade-in-up">
             <div className="flex flex-col md:flex-row gap-8 items-start">
               <div className="w-full md:w-1/3">
@@ -167,7 +193,6 @@ export default function CategoryPage({ params }: { params: { categoria: string }
             </div>
           </div>
 
-          {/* Horizontal tabs for subcategories */}
           <div className="mb-8 border-b border-border">
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
               {categoryData.subcategories.map((subcategory) => (
@@ -186,17 +211,22 @@ export default function CategoryPage({ params }: { params: { categoria: string }
             </div>
           </div>
 
-          {/* Products grid */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-foreground mb-6">
               {selectedSubcategory}
-              <span className="text-muted-foreground text-lg ml-2">({filteredProducts.length} productos)</span>
+              <span className="text-muted-foreground text-lg ml-2">
+                ({loading ? "..." : filteredProducts.length} productos)
+              </span>
             </h2>
 
-            {filteredProducts.length > 0 ? (
+            {loading ? (
+              <div className="text-center py-16">
+                <p className="text-muted-foreground text-lg">Cargando productos...</p>
+              </div>
+            ) : filteredProducts.length > 0 ? (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {filteredProducts.map((product) => (
-                  null
+                  <ProductCard key={product.id} product={convertToCartProduct(product)} />
                 ))}
               </div>
             ) : (

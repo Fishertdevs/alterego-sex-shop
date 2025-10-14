@@ -1,21 +1,49 @@
 "use client"
 
+import type React from "react"
+
 import { MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useStoreSettings } from "@/hooks/use-store-settings"
 
 export function WhatsAppButton() {
-  const handleWhatsAppClick = () => {
-    const phoneNumber = "573133582908" // Número sin espacios ni símbolos para WhatsApp API
-    const message = "Hola! Me interesa conocer más sobre los productos de ALTERƎGO"
+  const { settings } = useStoreSettings()
+
+  const handleWhatsAppClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    const rawNumber = settings?.store_phone || "+57 3168192054"
+    const phoneNumber = rawNumber.replace(/[\s\-()+ ]/g, "")
+
+    console.log("[v0] WhatsApp Button - Click event triggered")
+    console.log("[v0] WhatsApp Button - Raw number:", rawNumber)
+    console.log("[v0] WhatsApp Button - Cleaned number:", phoneNumber)
+
+    const message = "Hola, vengo desde la web de ALTERƎGO y me gustaría obtener más información."
     const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
-    window.open(url, "_blank")
+
+    console.log("[v0] WhatsApp Button - Opening URL:", url)
+
+    try {
+      const newWindow = window.open(url, "_blank", "noopener,noreferrer")
+      if (!newWindow) {
+        console.log("[v0] WhatsApp Button - Pop-up blocked, using location.href")
+        window.location.href = url
+      }
+    } catch (error) {
+      console.error("[v0] WhatsApp Button - Error opening window:", error)
+      window.location.href = url
+    }
   }
 
   return (
     <Button
       onClick={handleWhatsAppClick}
-      className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-green-500 hover:bg-green-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover-scale"
+      className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-green-500 hover:bg-green-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 cursor-pointer"
       size="icon"
+      type="button"
+      aria-label="Contactar por WhatsApp"
     >
       <MessageCircle className="h-6 w-6" />
       <span className="sr-only">Contactar por WhatsApp</span>

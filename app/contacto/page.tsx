@@ -4,18 +4,21 @@ import { Navigation } from "@/components/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Phone, Mail, Clock, Instagram, Facebook, MessageCircle } from "lucide-react"
+import { useStoreSettings } from "@/hooks/use-store-settings"
 
 export default function ContactoPage() {
+  const { settings } = useStoreSettings()
+
   const contactInfo = [
     {
       icon: Phone,
       title: "Teléfono",
-      details: ["+57 3133582908", "WhatsApp disponible"],
+      details: [settings?.store_phone || "+57 3168192054", "WhatsApp disponible"],
     },
     {
       icon: Mail,
       title: "Email",
-      details: ["altergo102@gmail.com", "Respuesta en 24 horas"],
+      details: [settings?.store_email || "altergo102@gmail.com", "Respuesta en 24 horas"],
     },
     {
       icon: Clock,
@@ -24,24 +27,32 @@ export default function ContactoPage() {
     },
   ]
 
+  const rawWhatsappNumber = settings?.store_phone || "+57 3168192054"
+  const whatsappNumber = rawWhatsappNumber.replace(/[\s\-()+ ]/g, "")
+  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Hola, vengo desde la web de ALTERƎGO y me gustaría obtener más información.")}`
+
+  console.log("[v0] Contacto Page - Raw WhatsApp number:", rawWhatsappNumber)
+  console.log("[v0] Contacto Page - Cleaned WhatsApp number:", whatsappNumber)
+  console.log("[v0] Contacto Page - WhatsApp URL:", whatsappUrl)
+
   const socialContacts = [
     {
       icon: Instagram,
       title: "Instagram",
-      details: ["https://www.instagram.com/alter.egooo0?igsh=OG14eW1hcXZuaHZx", "Síguenos en Instagram"],
+      details: [
+        settings?.instagram_url || "https://www.instagram.com/alter.egooo0?igsh=OG14eW1hcXZuaHZx",
+        "Síguenos en Instagram",
+      ],
     },
     {
       icon: MessageCircle,
       title: "WhatsApp",
-      details: [
-        "https://wa.me/573133582908?text=Hola%2C%20vengo%20desde%20la%20web%20de%20ALTERƎGO%20y%20me%20gustaría%20obtener%20más%20información",
-        "Chatea con nosotros",
-      ],
+      details: [whatsappUrl, "Chatea con nosotros"],
     },
     {
       icon: Facebook,
       title: "Facebook",
-      details: ["https://facebook.com/alterego", "Visítanos en Facebook"],
+      details: [settings?.facebook_url || "https://facebook.com/alterego", "Visítanos en Facebook"],
     },
   ]
 
@@ -74,7 +85,10 @@ export default function ContactoPage() {
                   {socialContacts.map((social) => (
                     <Button
                       key={social.title}
-                      onClick={() => window.open(social.details[0], "_blank")}
+                      onClick={() => {
+                        console.log("[v0] Contacto Page - Opening social link:", social.details[0])
+                        window.open(social.details[0], "_blank")
+                      }}
                       className={`w-full h-auto py-6 bg-accent hover:bg-accent/90 text-accent-foreground hover-scale transition-all duration-300`}
                     >
                       <div className="flex items-center justify-between w-full">
@@ -142,7 +156,6 @@ export default function ContactoPage() {
                       <div className="w-2 h-2 bg-accent rounded-full mr-3"></div>
                       Productos de calidad garantizada
                     </li>
-                    
                   </ul>
                 </CardContent>
               </Card>

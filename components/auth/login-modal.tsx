@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Loader2, Mail, ShieldCheck } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { useAuth } from "@/contexts/auth-context"
 
 interface LoginModalProps {
   isOpen: boolean
@@ -17,11 +18,11 @@ interface LoginModalProps {
 
 export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const router = useRouter()
-  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [loading, setLoading] = useState(false)
   const supabase = createBrowserClient()
+  const { setUserDirectly } = useAuth()
 
   const [loginData, setLoginData] = useState({
     email: "",
@@ -33,6 +34,8 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     setSuccess("")
     setLoading(true)
 
+    console.log("[v0] LoginModal - Attempting admin login for:", loginData.email)
+
     try {
       const { data: adminData, error: adminError } = await supabase
         .from("admins")
@@ -41,6 +44,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
         .single()
 
       if (adminError || !adminData) {
+        console.log("[v0] LoginModal - Admin not found in database")
         setError("Este email no tiene permisos de administrador")
         setLoading(false)
         return
@@ -53,15 +57,21 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
         isAdmin: true,
       }
 
-      localStorage.setItem("alterego-user", JSON.stringify(adminUser))
+      console.log("[v0] LoginModal - Admin found, setting user:", adminUser)
+
+      setUserDirectly(adminUser)
+
       setSuccess("¡Bienvenido Administrador!")
 
       setTimeout(() => {
+        console.log("[v0] LoginModal - Redirecting to admin panel")
         onClose()
         router.push("/admin")
+        // Force page reload to ensure context is updated
+        window.location.href = "/admin"
       }, 500)
     } catch (error) {
-      console.error("Error en login admin:", error)
+      console.error("[v0] LoginModal - Error en login admin:", error)
       setError("Error al iniciar sesión. Por favor intenta de nuevo.")
     } finally {
       setLoading(false)

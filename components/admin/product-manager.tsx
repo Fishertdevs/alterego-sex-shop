@@ -12,17 +12,13 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Plus, Edit, Trash2, Search, X, Upload, Percent } from "lucide-react"
+import { Plus, Edit, Trash2, Search, X, Upload, Percent, Video } from "lucide-react"
 import Image from "next/image"
-import {
-  getAdminProducts,
-  saveAdminProduct,
-  updateAdminProduct,
-  deleteAdminProduct,
-  convertImageToBase64,
-  type AdminProduct,
-} from "@/lib/admin-storage"
+import { convertImageToBase64, type AdminProduct } from "@/lib/admin-storage"
 import { categoriesData } from "@/data/products"
+import { put } from "@vercel/blob"
+import { createProduct, getProducts, convertSupabaseToAdmin } from "@/lib/supabase-storage"
+import { createBrowserClient } from "@/lib/supabase/client"
 
 const categoryOptions = [
   { key: "juguetes-intimos", label: "Juguetes Íntimos" },
@@ -42,7 +38,11 @@ export function ProductManager() {
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null)
 
   useEffect(() => {
-    setProducts(getAdminProducts())
+    const fetchProducts = async () => {
+      const productsFromSupabase = await getProducts()
+      setProducts(productsFromSupabase.map(convertSupabaseToAdmin))
+    }
+    fetchProducts()
   }, [])
 
   const filteredProducts = products.filter((product) => {
@@ -59,6 +59,7 @@ export function ProductManager() {
     description: "",
     stock: "",
     images: [] as string[],
+    videos: [] as string[], // Agregar soporte para videos
     featured: false,
     discount: "",
   })
@@ -102,31 +103,87 @@ export function ProductManager() {
     }))
   }
 
-  const handleAddProduct = () => {
-    if (!newProduct.name || !newProduct.price || !newProduct.category) {
-      alert("Por favor completa todos los campos requeridos")
+  const formatNumber = (value: string): string => {
+    // Eliminar todo excepto números
+    const numbers = value.replace(/\D/g, "")
+
+    // Si está vacío, retornar cadena vacía
+    if (!numbers) return ""
+
+    // Formatear con separadores de miles (puntos)
+    return Number.parseInt(numbers).toLocaleString("es-CO")
+  }
+
+  const parseFormattedNumber = (value: string): number => {
+    const numbers = value.replace(/\D/g, "")
+    return numbers ? Number.parseInt(numbers) : 0
+  }
+
+  const handleAddProduct = async () => {
+    if (
+      !newProduct.name ||
+      !newProduct.price ||
+      !newProduct.stock ||
+      !newProduct.category ||
+      !newProduct.subcategory ||
+      !newProduct.description
+    ) {
+      alert(
+        "Por favor completa todos los campos obligatorios: nombre, precio, stock, categoría, subcategoría y descripción",
+      )
       return
     }
 
-    const price = Number.parseFloat(newProduct.price)
+    if (newProduct.images.length === 0 && newProduct.videos.length === 0) {
+      alert("Por favor agrega al menos una imagen o un video del producto")
+      return
+    }
+
+    console.log("[v0] Creating product with data:", {
+      name: newProduct.name,
+      category: newProduct.category,
+      subcategory: newProduct.subcategory,
+      price: newProduct.price,
+      stock: newProduct.stock,
+      discount: newProduct.discount,
+      images: newProduct.images.length,
+      videos: newProduct.videos.length,
+    })
+
+    const price = parseFormattedNumber(newProduct.price)
     const discount = newProduct.discount ? Number.parseFloat(newProduct.discount) : undefined
 
     const finalPrice = discount && discount > 0 ? price * (1 - discount / 100) : price
 
-    const product = saveAdminProduct({
+    const productData = {
       name: newProduct.name,
       description: newProduct.description,
       price: finalPrice,
-      originalPrice: discount && discount > 0 ? price : undefined,
+      original_price: discount && discount > 0 ? price : undefined,
       discount: discount && discount > 0 ? discount : undefined,
       category: newProduct.category,
       subcategory: newProduct.subcategory || undefined,
-      stock: Number.parseInt(newProduct.stock) || 0,
+      stock: parseFormattedNumber(newProduct.stock),
       images: newProduct.images,
+      videos: newProduct.videos,
       featured: newProduct.featured,
-    })
+    }
 
-    setProducts(getAdminProducts())
+    console.log("[v0] Product data to save:", productData)
+
+    const savedProduct = await createProduct(productData)
+
+    if (!savedProduct) {
+      console.error("[v0] Failed to save product")
+      alert("Error al guardar el producto. Por favor intenta de nuevo.")
+      return
+    }
+
+    console.log("[v0] Product saved successfully:", savedProduct)
+
+    const updatedProducts = await getProducts()
+    setProducts(updatedProducts.map(convertSupabaseToAdmin))
+
     setIsAddDialogOpen(false)
     setNewProduct({
       name: "",
@@ -136,37 +193,133 @@ export function ProductManager() {
       description: "",
       stock: "",
       images: [],
+      videos: [],
       featured: false,
       discount: "",
     })
   }
 
-  const handleEditProduct = () => {
+  const handleEditProduct = async () => {
     if (!editingProduct) return
 
-    updateAdminProduct(editingProduct.id, {
-      name: editingProduct.name,
-      description: editingProduct.description,
-      price: editingProduct.price,
-      originalPrice: editingProduct.originalPrice,
-      discount: editingProduct.discount,
-      category: editingProduct.category,
-      subcategory: editingProduct.subcategory,
-      stock: editingProduct.stock,
-      images: editingProduct.images,
-      featured: editingProduct.featured,
-    })
+    try {
+      const supabase = createBrowserClient()
 
-    setProducts(getAdminProducts())
-    setIsEditDialogOpen(false)
-    setEditingProduct(null)
+      const { error } = await supabase
+        .from("products")
+        .update({
+          name: editingProduct.name,
+          description: editingProduct.description,
+          price: editingProduct.price,
+          original_price: editingProduct.originalPrice,
+          discount: editingProduct.discount,
+          category: editingProduct.category,
+          subcategory: editingProduct.subcategory,
+          stock: editingProduct.stock,
+          images: editingProduct.images,
+          videos: editingProduct.videos,
+          featured: editingProduct.featured,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", editingProduct.id)
+
+      if (error) {
+        console.error("[v0] Error updating product:", error)
+        alert("Error al actualizar el producto. Por favor intenta de nuevo.")
+        return
+      }
+
+      console.log("[v0] Product updated successfully")
+
+      // Recargar productos
+      const updatedProducts = await getProducts()
+      setProducts(updatedProducts.map(convertSupabaseToAdmin))
+
+      setIsEditDialogOpen(false)
+      setEditingProduct(null)
+    } catch (error) {
+      console.error("[v0] Error updating product:", error)
+      alert("Error al actualizar el producto. Por favor intenta de nuevo.")
+    }
   }
 
-  const handleDeleteProduct = (id: string) => {
+  const handleDeleteProduct = async (id: string) => {
     if (confirm("¿Estás seguro de que deseas eliminar este producto?")) {
-      deleteAdminProduct(id)
-      setProducts(getAdminProducts())
+      try {
+        const supabase = createBrowserClient()
+
+        console.log("[v0] Deleting product:", id)
+
+        const { error } = await supabase.from("products").delete().eq("id", id)
+
+        if (error) {
+          console.error("[v0] Error deleting product:", error)
+          alert("Error al eliminar el producto. Por favor intenta de nuevo.")
+          return
+        }
+
+        console.log("[v0] Product deleted successfully")
+
+        // Recargar productos
+        const updatedProducts = await getProducts()
+        setProducts(updatedProducts.map(convertSupabaseToAdmin))
+      } catch (error) {
+        console.error("[v0] Error deleting product:", error)
+        alert("Error al eliminar el producto. Por favor intenta de nuevo.")
+      }
     }
+  }
+
+  const [uploadingVideo, setUploadingVideo] = useState(false)
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+
+    setUploadingVideo(true)
+
+    try {
+      const videoUrls: string[] = []
+
+      for (const file of files) {
+        // Validar tamaño del archivo (máximo 50MB)
+        if (file.size > 50 * 1024 * 1024) {
+          alert(`El video ${file.name} es demasiado grande. Máximo 50MB.`)
+          continue
+        }
+
+        // Validar formato
+        const validFormats = ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo"]
+        if (!validFormats.includes(file.type)) {
+          alert(`El formato de ${file.name} no es válido. Usa MP4, WebM, MOV o AVI.`)
+          continue
+        }
+
+        // Subir a Vercel Blob
+        const blob = await put(`products/videos/${Date.now()}-${file.name}`, file, {
+          access: "public",
+        })
+
+        videoUrls.push(blob.url)
+      }
+
+      setNewProduct((prev) => ({
+        ...prev,
+        videos: [...prev.videos, ...videoUrls],
+      }))
+    } catch (error) {
+      console.error("[v0] Error uploading video:", error)
+      alert("Error al subir el video. Por favor intenta de nuevo.")
+    } finally {
+      setUploadingVideo(false)
+    }
+  }
+
+  const handleRemoveVideo = (index: number) => {
+    setNewProduct((prev) => ({
+      ...prev,
+      videos: prev.videos.filter((_, i) => i !== index),
+    }))
   }
 
   return (
@@ -200,21 +353,26 @@ export function ProductManager() {
                       <Label htmlFor="price">Precio (COP) *</Label>
                       <Input
                         id="price"
-                        type="number"
-                        step="1000"
-                        placeholder="Ej: 150000"
+                        type="text"
+                        placeholder="Ej: 150.000"
                         value={newProduct.price}
-                        onChange={(e) => setNewProduct((prev) => ({ ...prev, price: e.target.value }))}
+                        onChange={(e) => {
+                          const formatted = formatNumber(e.target.value)
+                          setNewProduct((prev) => ({ ...prev, price: formatted }))
+                        }}
                       />
                     </div>
                     <div>
                       <Label htmlFor="stock">Stock *</Label>
                       <Input
                         id="stock"
-                        type="number"
+                        type="text"
                         placeholder="Ej: 10"
                         value={newProduct.stock}
-                        onChange={(e) => setNewProduct((prev) => ({ ...prev, stock: e.target.value }))}
+                        onChange={(e) => {
+                          const formatted = formatNumber(e.target.value)
+                          setNewProduct((prev) => ({ ...prev, stock: formatted }))
+                        }}
                       />
                     </div>
                   </div>
@@ -237,17 +395,21 @@ export function ProductManager() {
                       <div className="mt-2 p-3 bg-muted rounded-lg">
                         <p className="text-sm text-muted-foreground">Precio original</p>
                         <p className="text-sm line-through">
-                          ${Number.parseFloat(newProduct.price).toLocaleString("es-CO")} COP
+                          ${parseFormattedNumber(newProduct.price).toLocaleString("es-CO")} COP
                         </p>
                         <p className="text-sm text-muted-foreground mt-1">Precio con descuento</p>
                         <p className="text-lg font-bold text-accent">
-                          ${calculateDiscountedPrice(newProduct.price, newProduct.discount)?.toLocaleString("es-CO")}{" "}
+                          $
+                          {(
+                            parseFormattedNumber(newProduct.price) *
+                            (1 - Number.parseFloat(newProduct.discount) / 100)
+                          ).toLocaleString("es-CO")}{" "}
                           COP
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
                           Ahorro: $
                           {(
-                            Number.parseFloat(newProduct.price) *
+                            parseFormattedNumber(newProduct.price) *
                             (Number.parseFloat(newProduct.discount) / 100)
                           ).toLocaleString("es-CO")}{" "}
                           COP
@@ -352,6 +514,59 @@ export function ProductManager() {
                     </div>
                   </div>
 
+                  <div>
+                    <Label>Videos del Producto</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Formatos aceptados: MP4, WebM, MOV, AVI (máximo 50MB por video)
+                    </p>
+                    <div className="mt-2 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
+                          multiple
+                          onChange={handleVideoUpload}
+                          className="flex-1"
+                          id="video-upload"
+                          disabled={uploadingVideo}
+                        />
+                        <Label
+                          htmlFor="video-upload"
+                          className={`cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 ${
+                            uploadingVideo ? "opacity-50 cursor-not-allowed" : ""
+                          }`}
+                        >
+                          <Video className="h-4 w-4 mr-2" />
+                          {uploadingVideo ? "Subiendo..." : "Subir Videos"}
+                        </Label>
+                      </div>
+
+                      {newProduct.videos.length > 0 && (
+                        <div className="grid grid-cols-2 gap-4">
+                          {newProduct.videos.map((videoUrl, index) => (
+                            <div
+                              key={index}
+                              className="relative aspect-video rounded-lg overflow-hidden group bg-black"
+                            >
+                              <video
+                                src={videoUrl}
+                                controls
+                                className="w-full h-full object-contain"
+                                preload="metadata"
+                              />
+                              <button
+                                onClick={() => handleRemoveVideo(index)}
+                                className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="featured"
@@ -360,8 +575,8 @@ export function ProductManager() {
                     />
                     <Label htmlFor="featured">Producto Destacado</Label>
                   </div>
-                  <Button onClick={handleAddProduct} className="w-full">
-                    Agregar Producto
+                  <Button onClick={handleAddProduct} className="w-full" disabled={uploadingVideo}>
+                    {uploadingVideo ? "Subiendo videos..." : "Agregar Producto"}
                   </Button>
                 </div>
               </DialogContent>
@@ -512,8 +727,8 @@ export function ProductManager() {
                         prev
                           ? {
                               ...prev,
-                              price: Number.parseFloat(e.target.value),
-                              originalPrice: prev.discount ? Number.parseFloat(e.target.value) : undefined,
+                              price: Number.parseFloat(e.target.value) || 0,
+                              originalPrice: prev.discount ? Number.parseFloat(e.target.value) || 0 : undefined,
                             }
                           : null,
                       )
@@ -527,7 +742,9 @@ export function ProductManager() {
                     type="number"
                     value={editingProduct.stock}
                     onChange={(e) =>
-                      setEditingProduct((prev) => (prev ? { ...prev, stock: Number.parseInt(e.target.value) } : null))
+                      setEditingProduct((prev) =>
+                        prev ? { ...prev, stock: Number.parseInt(e.target.value) || 0 } : null,
+                      )
                     }
                   />
                 </div>
@@ -686,6 +903,85 @@ export function ProductManager() {
                   )}
                 </div>
               </div>
+
+              <div>
+                <Label>Videos del Producto</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Formatos aceptados: MP4, WebM, MOV, AVI (máximo 50MB por video)
+                </p>
+                <div className="mt-2 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="file"
+                      accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
+                      multiple
+                      onChange={async (e) => {
+                        const files = Array.from(e.target.files || [])
+                        const newVideos: string[] = []
+
+                        for (const file of files) {
+                          try {
+                            // Validar tamaño del archivo (máximo 50MB)
+                            if (file.size > 50 * 1024 * 1024) {
+                              alert(`El video ${file.name} es demasiado grande. Máximo 50MB.`)
+                              continue
+                            }
+
+                            // Validar formato
+                            const validFormats = ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo"]
+                            if (!validFormats.includes(file.type)) {
+                              alert(`El formato de ${file.name} no es válido. Usa MP4, WebM, MOV o AVI.`)
+                              continue
+                            }
+
+                            // Subir a Vercel Blob
+                            const blob = await put(`products/videos/${Date.now()}-${file.name}`, file, {
+                              access: "public",
+                            })
+
+                            newVideos.push(blob.url)
+                          } catch (error) {
+                            console.error("[v0] Error uploading video:", error)
+                            alert("Error al subir el video. Por favor intenta de nuevo.")
+                          }
+                        }
+
+                        setEditingProduct((prev) => (prev ? { ...prev, videos: [...prev.videos, ...newVideos] } : null))
+                      }}
+                      className="flex-1"
+                      id="edit-video-upload"
+                    />
+                    <Label
+                      htmlFor="edit-video-upload"
+                      className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                    >
+                      <Video className="h-4 w-4 mr-2" />
+                      Agregar
+                    </Label>
+                  </div>
+
+                  {editingProduct.videos.length > 0 && (
+                    <div className="grid grid-cols-2 gap-4">
+                      {editingProduct.videos.map((videoUrl, index) => (
+                        <div key={index} className="relative aspect-video rounded-lg overflow-hidden group bg-black">
+                          <video src={videoUrl} controls className="w-full h-full object-contain" preload="metadata" />
+                          <button
+                            onClick={() =>
+                              setEditingProduct((prev) =>
+                                prev ? { ...prev, videos: prev.videos.filter((_, i) => i !== index) } : null,
+                              )
+                            }
+                            className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="flex items-center space-x-2">
                 <Switch
                   id="edit-featured"

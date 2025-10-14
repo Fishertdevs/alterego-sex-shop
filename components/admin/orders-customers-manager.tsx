@@ -56,15 +56,36 @@ export function OrdersCustomersManager() {
     customer_department: "",
     customer_municipality: "",
     customer_email: "",
-    total_product_cost: 0,
+    total_product_cost: "",
     payment_method: "",
     shipping_type: "",
-    shipping_cost: 0,
+    shipping_cost: "",
     shipping_company: "",
     notes: "",
   })
 
   const supabase = createBrowserClient()
+
+  const formatNumberInput = (value: string): string => {
+    // Eliminar todo excepto números
+    const numbers = value.replace(/\D/g, "")
+
+    // Si está vacío, retornar cadena vacía
+    if (!numbers) return ""
+
+    // Formatear con separadores de miles (puntos)
+    return Number.parseInt(numbers).toLocaleString("es-CO")
+  }
+
+  const parseFormattedNumber = (value: string): number => {
+    if (!value) return 0
+    return Number.parseInt(value.replace(/\D/g, "")) || 0
+  }
+
+  const handleNumberInput = (field: "total_product_cost" | "shipping_cost", value: string) => {
+    const formatted = formatNumberInput(value)
+    setNewOrder((prev) => ({ ...prev, [field]: formatted }))
+  }
 
   useEffect(() => {
     loadOrders()
@@ -115,8 +136,19 @@ export function OrdersCustomersManager() {
 
     const { error } = await supabase.from("orders").insert([
       {
-        ...newOrder,
-        products: [], // Se agregarían productos aquí
+        customer_name: newOrder.customer_name,
+        customer_phone: newOrder.customer_phone,
+        customer_address: newOrder.customer_address,
+        customer_department: newOrder.customer_department,
+        customer_municipality: newOrder.customer_municipality,
+        customer_email: newOrder.customer_email,
+        total_product_cost: parseFormattedNumber(newOrder.total_product_cost),
+        payment_method: newOrder.payment_method,
+        shipping_type: newOrder.shipping_type,
+        shipping_cost: parseFormattedNumber(newOrder.shipping_cost),
+        shipping_company: newOrder.shipping_company,
+        notes: newOrder.notes,
+        products: [],
         payment_status: "pending",
         order_status: "pending",
         delivered: false,
@@ -132,6 +164,69 @@ export function OrdersCustomersManager() {
     await loadOrders()
     setIsAddDialogOpen(false)
     resetNewOrder()
+  }
+
+  const handleConfirmOrder = async (orderId: string, products: Array<{ id: string; quantity: number }>) => {
+    console.log("[v0] Confirming order and updating stock:", orderId)
+
+    try {
+      // Actualizar el stock de cada producto
+      for (const product of products) {
+        const { data: currentProduct, error: fetchError } = await supabase
+          .from("products")
+          .select("stock")
+          .eq("id", product.id)
+          .single()
+
+        if (fetchError || !currentProduct) {
+          console.error("[v0] Error fetching product:", fetchError)
+          continue
+        }
+
+        const newStock = currentProduct.stock - product.quantity
+
+        if (newStock < 0) {
+          alert(`Stock insuficiente para el producto ${product.id}`)
+          return false
+        }
+
+        const { error: updateError } = await supabase
+          .from("products")
+          .update({
+            stock: newStock,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", product.id)
+
+        if (updateError) {
+          console.error("[v0] Error updating stock:", updateError)
+          return false
+        }
+
+        console.log("[v0] Stock updated for product:", product.id, "New stock:", newStock)
+      }
+
+      // Actualizar el estado del pedido a confirmado
+      const { error: orderError } = await supabase
+        .from("orders")
+        .update({
+          order_status: "confirmed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", orderId)
+
+      if (orderError) {
+        console.error("[v0] Error updating order status:", orderError)
+        return false
+      }
+
+      console.log("[v0] Order confirmed successfully")
+      await loadOrders()
+      return true
+    } catch (error) {
+      console.error("[v0] Error confirming order:", error)
+      return false
+    }
   }
 
   const handleUpdateDeliveryStatus = async (orderId: string, delivered: boolean) => {
@@ -163,10 +258,10 @@ export function OrdersCustomersManager() {
       customer_department: "",
       customer_municipality: "",
       customer_email: "",
-      total_product_cost: 0,
+      total_product_cost: "",
       payment_method: "",
       shipping_type: "",
-      shipping_cost: 0,
+      shipping_cost: "",
       shipping_company: "",
       notes: "",
     })
@@ -362,15 +457,10 @@ export function OrdersCustomersManager() {
                           <Label htmlFor="total_product_cost">Costo del Producto *</Label>
                           <Input
                             id="total_product_cost"
-                            type="number"
+                            type="text"
                             value={newOrder.total_product_cost}
-                            onChange={(e) =>
-                              setNewOrder((prev) => ({
-                                ...prev,
-                                total_product_cost: Number.parseFloat(e.target.value) || 0,
-                              }))
-                            }
-                            placeholder="50000"
+                            onChange={(e) => handleNumberInput("total_product_cost", e.target.value)}
+                            placeholder="Ej: 50.000"
                           />
                         </div>
                       </div>
@@ -405,15 +495,10 @@ export function OrdersCustomersManager() {
                           <Label htmlFor="shipping_cost">Costo del Envío</Label>
                           <Input
                             id="shipping_cost"
-                            type="number"
+                            type="text"
                             value={newOrder.shipping_cost}
-                            onChange={(e) =>
-                              setNewOrder((prev) => ({
-                                ...prev,
-                                shipping_cost: Number.parseFloat(e.target.value) || 0,
-                              }))
-                            }
-                            placeholder="15000"
+                            onChange={(e) => handleNumberInput("shipping_cost", e.target.value)}
+                            placeholder="Ej: 15.000"
                             disabled={newOrder.shipping_type === "gratis"}
                           />
                         </div>

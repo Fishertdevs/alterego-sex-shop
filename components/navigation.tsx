@@ -22,6 +22,23 @@ export function Navigation() {
 
   useEffect(() => {
     console.log("[v0] Navigation - User state:", user)
+
+    // Check if user is in localStorage but not in context
+    const checkLocalStorage = () => {
+      const storedUser = localStorage.getItem("alterego-user")
+      if (storedUser && !user) {
+        console.log("[v0] Navigation - User in localStorage but not in context, triggering reload")
+        window.dispatchEvent(new Event("auth-reload"))
+      }
+    }
+
+    checkLocalStorage()
+
+    // Check every 2 seconds for the first 10 seconds after mount
+    const interval = setInterval(checkLocalStorage, 2000)
+    setTimeout(() => clearInterval(interval), 10000)
+
+    return () => clearInterval(interval)
   }, [user])
 
   const navItems = [

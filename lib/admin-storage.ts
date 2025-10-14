@@ -11,6 +11,7 @@ export interface AdminProduct {
   subcategory?: string // Added subcategory field
   stock: number
   images: string[] // Base64 o URLs
+  videos: string[] // Agregar soporte para videos
   featured: boolean
   createdAt: string
   updatedAt: string
