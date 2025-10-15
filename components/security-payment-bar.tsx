@@ -18,7 +18,7 @@ export function SecurityPaymentBar() {
 
             <div className="flex items-center gap-1">
               <Image
-                src="/images/design-mode/image.png"
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-boVYhfotN6l94rh7jOPfMdLvyDf9Nv.png"
                 alt="Nequi"
                 width={45}
                 height={16}
@@ -28,7 +28,7 @@ export function SecurityPaymentBar() {
 
             <div className="flex items-center gap-1">
               <Image
-                src="/images/design-mode/image.png"
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-aItsysxKBj6KLvyvpOId3ypjzvPzNO.png"
                 alt="Daviplata"
                 width={55}
                 height={16}
@@ -38,7 +38,7 @@ export function SecurityPaymentBar() {
 
             <div className="flex items-center gap-1">
               <Image
-                src="/images/design-mode/image.png"
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-XRdHI1NihmvpuI5DYeeMeHRNjF0aWb.png"
                 alt="Mastercard"
                 width={30}
                 height={18}
