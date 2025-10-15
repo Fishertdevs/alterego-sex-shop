@@ -17,15 +17,9 @@ export function Logo({ className = "", size = "md" }: LogoProps) {
     lg: "w-12 h-12",
   }
 
+  const filterClass = theme === "dark" ? "invert brightness-200" : "brightness-0"
+
   return (
-    <div className={`relative ${sizeClasses[size]} ${className}`}>
-      <Image
-        src={theme === "dark" ? "/alterego-logo-symbol.png" : "/alterego-logo-light.png"}
-        alt="ALTEREGO"
-        fill
-        className="object-contain transition-opacity duration-300"
-        priority
-      />
-    </div>
+    null
   )
 }

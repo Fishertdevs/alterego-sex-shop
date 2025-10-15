@@ -4,7 +4,6 @@ import { useCart } from "@/contexts/cart-context"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Minus, Plus, Trash2, ShoppingBag, MessageCircle, Instagram } from "lucide-react"
 import Image from "next/image"
 import { createBrowserClient } from "@/lib/supabase/client"
@@ -19,15 +18,14 @@ interface CartDrawerProps {
 export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const { items, updateQuantity, removeFromCart, total, clearCart } = useCart()
   const { settings } = useStoreSettings()
-  const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [showReviewPrompt, setShowReviewPrompt] = useState(false)
   const [saleChannel, setSaleChannel] = useState<"whatsapp" | "instagram">("whatsapp")
   const [purchaseTotal, setPurchaseTotal] = useState(0)
   const supabase = createBrowserClient()
 
   const generateWhatsAppMessage = () => {
-    let message = "¡Hola! 👋 Bienvenido a *ALTEREGO*\n\n"
-    message += "Estoy interesado en comprar los siguientes productos:\n\n"
+    let message = "🌟 ¡Hola! Saludos desde *ALTERƎGO* 🌟\n\n"
+    message += "Me gustaría consultar sobre estos productos que me interesan:\n\n"
 
     let subtotalSinDescuento = 0
     let descuentoTotal = 0
@@ -39,19 +37,19 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       const subtotal = precioUnitario * item.quantity
       const subtotalOriginal = precioOriginal * item.quantity
 
-      message += `🛍️ *${item.name}*\n`
-      message += `   • Cantidad: ${item.quantity}\n`
+      message += `🎁 *${item.name}*\n`
+      message += `   📦 Cantidad: ${item.quantity} ${item.quantity === 1 ? "unidad" : "unidades"}\n`
 
       if (descuento > 0) {
-        message += `   • Precio unitario: $${precioUnitario.toLocaleString("es-CO")} COP\n`
-        message += `   • Descuento: ${descuento}%\n`
-        message += `   • Precio original: $${precioOriginal.toLocaleString("es-CO")} COP\n`
+        message += `   💰 Precio: $${precioUnitario.toLocaleString("es-CO")} COP\n`
+        message += `   🏷️ Descuento: ${descuento}% OFF\n`
+        message += `   ~~$${precioOriginal.toLocaleString("es-CO")}~~ → $${precioUnitario.toLocaleString("es-CO")} COP\n`
         descuentoTotal += subtotalOriginal - subtotal
       } else {
-        message += `   • Precio unitario: $${precioUnitario.toLocaleString("es-CO")} COP\n`
+        message += `   💰 Precio: $${precioUnitario.toLocaleString("es-CO")} COP\n`
       }
 
-      message += `   • Subtotal: $${subtotal.toLocaleString("es-CO")} COP\n`
+      message += `   💵 Subtotal: $${subtotal.toLocaleString("es-CO")} COP\n`
 
       if (index < items.length - 1) {
         message += "\n"
@@ -60,17 +58,20 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       subtotalSinDescuento += subtotalOriginal
     })
 
-    message += "\n━━━━━━━━━━━━━━━━━━━━\n\n"
+    message += "\n✨ *RESUMEN* ✨\n\n"
 
     if (descuentoTotal > 0) {
-      message += `💰 *Subtotal:* $${subtotalSinDescuento.toLocaleString("es-CO")} COP\n`
-      message += `💸 *Descuento total:* -$${descuentoTotal.toLocaleString("es-CO")} COP\n`
-      message += `💵 *Total a pagar:* $${total.toLocaleString("es-CO")} COP\n\n`
+      message += `💳 Subtotal: $${subtotalSinDescuento.toLocaleString("es-CO")} COP\n`
+      message += `🎉 Ahorro: -$${descuentoTotal.toLocaleString("es-CO")} COP\n`
+      message += `✅ *Total:* $${total.toLocaleString("es-CO")} COP\n\n`
     } else {
-      message += `💵 *Total a pagar:* $${total.toLocaleString("es-CO")} COP\n\n`
+      message += `✅ *Total:* $${total.toLocaleString("es-CO")} COP\n\n`
     }
 
-    message += "¿Están disponibles estos productos? 🙏"
+    message += "📸 _Las fotos de los productos las enviaré en el siguiente mensaje_\n\n"
+    message += "¿Están disponibles? 😊\n"
+    message += "¿Cuáles son las opciones de pago y envío? 🚚💳\n\n"
+    message += "¡Gracias! 🙌"
 
     return encodeURIComponent(message)
   }
@@ -134,27 +135,22 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         const cleanNumber = whatsappNumber.replace(/[\s\-()+ ]/g, "")
         const message = generateWhatsAppMessage()
         console.log("[v0] Redirecting to WhatsApp:", cleanNumber)
-        window.open(`https://wa.me/${cleanNumber}?text=${message}`, "_blank")
+        window.open(`https://wa.me/${cleanNumber}?text=${message}`, "_blank", "noopener,noreferrer")
       } else {
         const instagramUrl = settings?.instagram_url || "https://www.instagram.com/alterego"
         console.log("[v0] Redirecting to Instagram:", instagramUrl)
-        window.open(instagramUrl, "_blank")
+        window.open(instagramUrl, "_blank", "noopener,noreferrer")
       }
 
       onClose()
-      setShowSuccessModal(true)
+      setTimeout(() => {
+        setShowReviewPrompt(true)
+      }, 500)
     } catch (error) {
       console.error("[v0] Error in checkout process:", error)
       alert("Hubo un error al procesar tu pedido. Por favor, intenta de nuevo.")
       return
     }
-  }
-
-  const handleConfirmPurchase = () => {
-    setShowSuccessModal(false)
-    setTimeout(() => {
-      setShowReviewPrompt(true)
-    }, 300)
   }
 
   const handleOpenReviewForm = () => {
@@ -248,14 +244,14 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   <div className="space-y-2">
                     <Button
                       onClick={() => handleCheckout("whatsapp")}
-                      className="w-full bg-[#25D366] hover:bg-[#20BA5A] text-white font-serif"
+                      className="w-full bg-black hover:bg-black/90 text-white border border-[#D4AF37] font-serif"
                     >
                       <MessageCircle className="h-4 w-4 mr-2" />
                       Finalizar por WhatsApp
                     </Button>
                     <Button
                       onClick={() => handleCheckout("instagram")}
-                      className="w-full bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] hover:opacity-90 text-white font-serif"
+                      className="w-full bg-[#8B1538] hover:bg-[#6B0F2A] text-white font-serif"
                     >
                       <Instagram className="h-4 w-4 mr-2" />
                       Finalizar por Instagram
@@ -270,34 +266,6 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
           </div>
         </SheetContent>
       </Sheet>
-
-      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center font-serif text-2xl">¡Gracias por tu compra!</DialogTitle>
-            <DialogDescription className="text-center space-y-4 pt-4">
-              <div className="flex justify-center">
-                <div className="h-16 w-16 rounded-full bg-green-500/10 flex items-center justify-center">
-                  <ShoppingBag className="h-8 w-8 text-green-500" />
-                </div>
-              </div>
-              <div className="text-base">
-                Hemos recibido tu solicitud de compra. Nos comunicaremos contigo próximamente para confirmar los
-                detalles.
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Total:{" "}
-                <span className="font-bold text-accent text-lg">${purchaseTotal.toLocaleString("es-CO")} COP</span>
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-2 mt-4">
-            <Button onClick={handleConfirmPurchase} className="w-full font-serif">
-              Entendido
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <ReviewFormModal
         isOpen={showReviewPrompt}

@@ -25,16 +25,7 @@ export function WhatsAppButton() {
 
     console.log("[v0] WhatsApp Button - Opening URL:", url)
 
-    try {
-      const newWindow = window.open(url, "_blank", "noopener,noreferrer")
-      if (!newWindow) {
-        console.log("[v0] WhatsApp Button - Pop-up blocked, using location.href")
-        window.location.href = url
-      }
-    } catch (error) {
-      console.error("[v0] WhatsApp Button - Error opening window:", error)
-      window.location.href = url
-    }
+    window.open(url, "_blank", "noopener,noreferrer")
   }
 
   return (

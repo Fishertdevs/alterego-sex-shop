@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Star, Quote, Filter } from "lucide-react"
+import { Star, Quote, Filter, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ReviewFormModal } from "./review-form-modal"
@@ -78,6 +78,17 @@ export function ReviewsSection() {
     return date.toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" })
   }
 
+  const scrollReviews = (direction: "left" | "right") => {
+    const container = document.getElementById("reviews-container")
+    if (container) {
+      const scrollAmount = 400
+      container.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      })
+    }
+  }
+
   if (loading) {
     return (
       <section className="py-16 bg-muted/30">
@@ -142,7 +153,25 @@ export function ReviewsSection() {
                 ))}
               </div>
 
-              <div className="max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-accent scrollbar-track-muted">
+              <div className="relative">
+                {/* Botón de scroll izquierda */}
+                <button
+                  onClick={() => scrollReviews("left")}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-accent hover:bg-accent/90 text-accent-foreground rounded-full p-2 shadow-lg transition-all"
+                  aria-label="Scroll izquierda"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+
+                {/* Botón de scroll derecha */}
+                <button
+                  onClick={() => scrollReviews("right")}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-accent hover:bg-accent/90 text-accent-foreground rounded-full p-2 shadow-lg transition-all"
+                  aria-label="Scroll derecha"
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+
                 {filteredReviews.length === 0 ? (
                   <div className="text-center py-12">
                     <p className="text-muted-foreground font-serif">
@@ -150,23 +179,33 @@ export function ReviewsSection() {
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredReviews.map((review) => (
-                      <Card
-                        key={review.id}
-                        className="p-6 bg-background border-border hover:shadow-lg transition-shadow"
-                      >
-                        <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <h3 className="font-semibold text-foreground font-serif">{review.customer_name}</h3>
-                            <p className="text-sm text-muted-foreground">{formatDate(review.created_at)}</p>
+                  <div
+                    id="reviews-container"
+                    className="overflow-x-auto pb-4 px-12 scrollbar-thin scrollbar-thumb-accent scrollbar-track-muted"
+                    style={{
+                      scrollbarWidth: "thin",
+                      scrollbarColor: "hsl(var(--accent)) hsl(var(--muted))",
+                    }}
+                  >
+                    <div className="flex gap-6" style={{ minWidth: "max-content" }}>
+                      {filteredReviews.map((review) => (
+                        <Card
+                          key={review.id}
+                          className="p-6 bg-background border-border hover:shadow-lg transition-shadow flex-shrink-0"
+                          style={{ width: "350px" }}
+                        >
+                          <div className="flex items-start justify-between mb-4">
+                            <div>
+                              <h3 className="font-semibold text-foreground font-serif">{review.customer_name}</h3>
+                              <p className="text-sm text-muted-foreground">{formatDate(review.created_at)}</p>
+                            </div>
+                            {renderStars(review.rating)}
                           </div>
-                          {renderStars(review.rating)}
-                        </div>
-                        <Quote className="h-8 w-8 text-accent/20 mb-2" />
-                        <p className="text-muted-foreground italic font-serif">{review.comment}</p>
-                      </Card>
-                    ))}
+                          <Quote className="h-8 w-8 text-accent/20 mb-2" />
+                          <p className="text-muted-foreground italic font-serif">{review.comment}</p>
+                        </Card>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

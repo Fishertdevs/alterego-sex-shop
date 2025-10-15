@@ -11,6 +11,7 @@ import { useTheme } from "@/contexts/theme-context"
 import { LoginModal } from "@/components/auth/login-modal"
 import { CartDrawer } from "@/components/cart/cart-drawer"
 import { Logo } from "@/components/logo"
+import { SecurityPaymentBar } from "@/components/security-payment-bar"
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
@@ -168,6 +169,10 @@ export function Navigation() {
           )}
         </div>
       </nav>
+
+      <div className="fixed top-16 w-full z-40">
+        <SecurityPaymentBar />
+      </div>
 
       {/* Modals */}
       <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />

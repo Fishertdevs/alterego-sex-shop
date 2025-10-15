@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Users, Search, Plus, Eye, Package, Phone, MapPin, CreditCard, Truck } from "lucide-react"
+import { Users, Search, Plus, Eye, Package, Phone, MapPin, CreditCard, Truck, Trash2 } from "lucide-react"
 import { colombiaDepartments, shippingCompanies, paymentMethods, shippingTypes } from "@/lib/colombia-data"
 import { createBrowserClient } from "@/lib/supabase/client"
 
@@ -230,10 +230,55 @@ export function OrdersCustomersManager() {
   }
 
   const handleUpdateDeliveryStatus = async (orderId: string, delivered: boolean) => {
+    if (delivered) {
+      const order = orders.find((o) => o.id === orderId)
+      if (order && order.products && order.products.length > 0) {
+        console.log("[v0] Order marked as delivered, updating stock:", orderId)
+
+        // Actualizar el stock de cada producto
+        for (const product of order.products) {
+          const { data: currentProduct, error: fetchError } = await supabase
+            .from("products")
+            .select("stock")
+            .eq("id", product.id)
+            .single()
+
+          if (fetchError || !currentProduct) {
+            console.error("[v0] Error fetching product:", fetchError)
+            continue
+          }
+
+          const newStock = currentProduct.stock - product.quantity
+
+          if (newStock < 0) {
+            alert(`Stock insuficiente para el producto ${product.name}. Stock actual: ${currentProduct.stock}`)
+            return
+          }
+
+          const { error: updateError } = await supabase
+            .from("products")
+            .update({
+              stock: newStock,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", product.id)
+
+          if (updateError) {
+            console.error("[v0] Error updating stock:", updateError)
+            alert("Error al actualizar el stock")
+            return
+          }
+
+          console.log("[v0] Stock updated for product:", product.id, "New stock:", newStock)
+        }
+      }
+    }
+
     const { error } = await supabase
       .from("orders")
       .update({
         delivered,
+        delivered_at: delivered ? new Date().toISOString() : null,
         order_status: delivered ? "delivered" : "shipped",
       })
       .eq("id", orderId)
@@ -247,6 +292,26 @@ export function OrdersCustomersManager() {
     if (selectedOrder?.id === orderId) {
       const updated = orders.find((o) => o.id === orderId)
       if (updated) setSelectedOrder({ ...updated, delivered })
+    }
+  }
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!confirm("¿Estás seguro de que deseas eliminar este pedido? Esta acción no se puede deshacer.")) {
+      return
+    }
+
+    const { error } = await supabase.from("orders").delete().eq("id", orderId)
+
+    if (error) {
+      console.error("Error deleting order:", error)
+      alert("Error al eliminar el pedido")
+      return
+    }
+
+    await loadOrders()
+    if (selectedOrder?.id === orderId) {
+      setIsDetailDialogOpen(false)
+      setSelectedOrder(null)
     }
   }
 
@@ -593,6 +658,7 @@ export function OrdersCustomersManager() {
                     <TableHead>Estado</TableHead>
                     <TableHead>Entregado</TableHead>
                     <TableHead>Acciones</TableHead>
+                    <TableHead>Eliminar</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -640,6 +706,16 @@ export function OrdersCustomersManager() {
                           }}
                         >
                           <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteOrder(order.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -762,7 +838,7 @@ export function OrdersCustomersManager() {
                   onCheckedChange={(checked) => handleUpdateDeliveryStatus(selectedOrder.id, checked as boolean)}
                 />
                 <Label htmlFor="delivered" className="cursor-pointer">
-                  Marcar como entregado
+                  Marcar como entregado {selectedOrder.delivered ? "✅" : ""}
                 </Label>
                 {selectedOrder.delivered && selectedOrder.delivered_at && (
                   <span className="text-sm text-muted-foreground ml-auto">
@@ -771,9 +847,19 @@ export function OrdersCustomersManager() {
                 )}
               </div>
 
-              <Button onClick={() => setIsDetailDialogOpen(false)} className="w-full">
-                Cerrar
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => setIsDetailDialogOpen(false)} className="flex-1">
+                  Cerrar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => handleDeleteOrder(selectedOrder.id)}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Eliminar Pedido
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

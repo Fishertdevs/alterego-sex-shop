@@ -166,7 +166,7 @@ export default function CategoryPage({ params }: { params: { categoria: string }
     <main className="min-h-screen">
       <Navigation />
 
-      <section className="pt-24 pb-16">
+      <section className="pt-32 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Link href="/productos" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-8">
             <ArrowLeft className="mr-2 h-4 w-4" />

@@ -137,6 +137,14 @@ export function updateAdminOrder(id: string, updates: Partial<AdminOrder>): Admi
   return orders[index]
 }
 
+export function deleteAdminOrder(id: string): boolean {
+  const orders = getAdminOrders()
+  const filtered = orders.filter((o) => o.id !== id)
+  if (filtered.length === orders.length) return false
+  localStorage.setItem("admin_orders", JSON.stringify(filtered))
+  return true
+}
+
 // Clientes
 export function getAdminCustomers(): AdminCustomer[] {
   if (typeof window === "undefined") return []
