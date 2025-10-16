@@ -259,3 +259,83 @@ export async function updateReviewStatus(
 
   return true
 }
+
+export interface ServiceSurvey {
+  id: string
+  customer_name: string
+  customer_email?: string
+  service_rating: number
+  delivery_rating: number
+  comment?: string
+  created_at: string
+}
+
+export interface SurveyToken {
+  id: string
+  token: string
+  order_id: string
+  product_id: string
+  customer_email?: string
+  used: boolean
+  created_at: string
+  expires_at: string
+}
+
+export async function getServiceSurveys(): Promise<ServiceSurvey[]> {
+  const supabase = getSupabaseClient()
+  const { data, error } = await supabase.from("service_surveys").select("*").order("created_at", { ascending: false })
+
+  if (error) {
+    console.error("[v0] Error fetching service surveys:", error)
+    return []
+  }
+
+  return data || []
+}
+
+export async function createSurveyToken(
+  orderId: string,
+  productId: string,
+  customerEmail?: string,
+): Promise<string | null> {
+  const supabase = getSupabaseClient()
+
+  // Generar token único usando la función de la base de datos
+  const { data: tokenData, error: tokenError } = await supabase.rpc("generate_survey_token")
+
+  if (tokenError || !tokenData) {
+    console.error("[v0] Error generating survey token:", tokenError)
+    return null
+  }
+
+  const token = tokenData as string
+
+  // Insertar el token en la tabla
+  const { error: insertError } = await supabase.from("survey_tokens").insert([
+    {
+      token,
+      order_id: orderId,
+      product_id: productId,
+      customer_email: customerEmail,
+    },
+  ])
+
+  if (insertError) {
+    console.error("[v0] Error creating survey token:", insertError)
+    return null
+  }
+
+  return token
+}
+
+export async function getSurveyTokensByOrder(orderId: string): Promise<SurveyToken[]> {
+  const supabase = getSupabaseClient()
+  const { data, error } = await supabase.from("survey_tokens").select("*").eq("order_id", orderId)
+
+  if (error) {
+    console.error("[v0] Error fetching survey tokens:", error)
+    return []
+  }
+
+  return data || []
+}

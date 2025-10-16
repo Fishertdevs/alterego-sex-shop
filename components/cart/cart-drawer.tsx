@@ -8,7 +8,7 @@ import { Minus, Plus, Trash2, ShoppingBag, MessageCircle, Instagram } from "luci
 import Image from "next/image"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useStoreSettings } from "@/hooks/use-store-settings"
-import { ReviewFormModal } from "@/components/reviews/review-form-modal"
+import { ServiceSurveyModal } from "@/components/reviews/service-survey-modal"
 
 interface CartDrawerProps {
   isOpen: boolean
@@ -18,85 +18,36 @@ interface CartDrawerProps {
 export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const { items, updateQuantity, removeFromCart, total, clearCart } = useCart()
   const { settings } = useStoreSettings()
-  const [showReviewPrompt, setShowReviewPrompt] = useState(false)
+  const [showServiceSurvey, setShowServiceSurvey] = useState(false)
   const [saleChannel, setSaleChannel] = useState<"whatsapp" | "instagram">("whatsapp")
   const [purchaseTotal, setPurchaseTotal] = useState(0)
   const supabase = createBrowserClient()
 
   const generateWhatsAppMessage = () => {
-    let message = "✨🌟 *¡Hola! Saludos desde ALTERƎGO* 🌟✨\n\n"
-    message += "💝 Me encantaría consultar sobre estos productos:\n\n"
-    message += "═══════════════════════\n\n"
-
-    let subtotalSinDescuento = 0
-    let descuentoTotal = 0
+    let message = "💋 ¡Hola! Te saluda el equipo de *ALTERƎGO* 🔥\n\n"
+    message += "Hemos recibido tu solicitud con los siguientes productos:\n\n"
 
     items.forEach((item, index) => {
       const precioUnitario = item.price
-      const precioOriginal = item.original_price || item.price
-      const descuento = item.discount || 0
       const subtotal = precioUnitario * item.quantity
-      const subtotalOriginal = precioOriginal * item.quantity
 
-      message += `🛍️ *PRODUCTO ${index + 1}*\n`
-      message += `💎 *${item.name}*\n\n`
+      message += `${index + 1}. *${item.name}*\n`
+      message += `    🧾 Cantidad: ${item.quantity} ${item.quantity === 1 ? "unidad" : "unidades"}\n`
+      message += `    💰 Precio unitario: $${precioUnitario.toLocaleString("es-CO")} COP\n`
+      message += `    💸 Subtotal: $${subtotal.toLocaleString("es-CO")} COP\n`
 
-      // Descripción del producto (primeras 80 caracteres)
-      if (item.description) {
-        const shortDescription =
-          item.description.length > 80 ? item.description.substring(0, 80) + "..." : item.description
-        message += `📝 _${shortDescription}_\n\n`
-      }
-
-      // Enlace a la imagen del producto - WhatsApp mostrará vista previa automáticamente
-      if (item.image) {
-        message += `📸 *Imagen del producto:*\n${item.image}\n\n`
-      }
-
-      // Información de precio y cantidad con emojis
-      message += `📦 *Cantidad:* ${item.quantity} ${item.quantity === 1 ? "unidad" : "unidades"}\n`
-
-      if (descuento > 0) {
-        message += `🏷️ *Descuento:* ${descuento}% OFF 🎉\n`
-        message += `💰 *Precio original:* ~~$${precioOriginal.toLocaleString("es-CO")}~~\n`
-        message += `✨ *Precio con descuento:* $${precioUnitario.toLocaleString("es-CO")} COP\n`
-        message += `💵 *Subtotal:* $${subtotal.toLocaleString("es-CO")} COP\n`
-        message += `🎁 *¡Ahorras $${(precioOriginal - precioUnitario).toLocaleString("es-CO")} por unidad!*\n`
-        descuentoTotal += subtotalOriginal - subtotal
-      } else {
-        message += `💰 *Precio unitario:* $${precioUnitario.toLocaleString("es-CO")} COP\n`
-        message += `💵 *Subtotal:* $${subtotal.toLocaleString("es-CO")} COP\n`
-      }
-
-      if (index < items.length - 1) {
-        message += "\n─────────────────────\n\n"
-      }
-
-      subtotalSinDescuento += subtotalOriginal
+      // Generar URL del producto para que el admin pueda verlo
+      const productUrl = `${window.location.origin}/productos/${item.category}?producto=${item.id}`
+      message += `    🔗 Ver producto: ${productUrl}\n\n`
     })
 
-    message += "\n═══════════════════════\n"
-    message += "🎯 *RESUMEN DE TU PEDIDO* 🎯\n"
-    message += "═══════════════════════\n\n"
-
-    if (descuentoTotal > 0) {
-      message += `💳 *Subtotal:* $${subtotalSinDescuento.toLocaleString("es-CO")} COP\n`
-      message += `🎉 *Descuento total:* -$${descuentoTotal.toLocaleString("es-CO")} COP\n`
-      message += `✅ *TOTAL A PAGAR:* *$${total.toLocaleString("es-CO")} COP* 💰\n\n`
-      message += `🎁 *¡Estás ahorrando $${descuentoTotal.toLocaleString("es-CO")} COP!* 🎁\n\n`
-    } else {
-      message += `✅ *TOTAL A PAGAR:* *$${total.toLocaleString("es-CO")} COP* 💰\n\n`
-    }
-
-    message += "═══════════════════════\n\n"
-    message += "📋 *Me gustaría confirmar:*\n\n"
-    message += "✔️ ¿Los productos están disponibles?\n"
-    message += "✔️ ¿Cuáles son las opciones de pago? 💳\n"
-    message += "✔️ ¿Cuál es el costo y tiempo de envío? 🚚\n\n"
-    message += "═══════════════════════\n\n"
-    message += "💬 _Quedo atento/a a su respuesta_ 😊\n\n"
-    message += "🙏 ¡Muchas gracias por su atención!\n"
-    message += "✨ *ALTERƎGO - Despierta tu lado más seductor* ✨"
+    message += "───────────────────────\n\n"
+    message += "🧠 *Resumen del pedido:*\n\n"
+    message += `💵 Total a pagar: $${total.toLocaleString("es-CO")} COP\n\n`
+    message += "🚚 Envíos nacionales por *Coordinadora*.\n"
+    message += "Si prefieres otra transportadora, indícalo en este chat y ajustaremos tu envío.\n\n"
+    message += "💳 Métodos de pago disponibles: *Nequi, Daviplata, PSE y Tarjeta.*\n\n"
+    message += "Gracias por elegir *ALTERƎGO*, donde el placer comienza con la imaginación. 💫"
 
     return encodeURIComponent(message)
   }
@@ -169,17 +120,13 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
       onClose()
       setTimeout(() => {
-        setShowReviewPrompt(true)
+        setShowServiceSurvey(true)
       }, 500)
     } catch (error) {
       console.error("[v0] Error in checkout process:", error)
       alert("Hubo un error al procesar tu pedido. Por favor, intenta de nuevo.")
       return
     }
-  }
-
-  const handleOpenReviewForm = () => {
-    setShowReviewPrompt(false)
   }
 
   return (
@@ -292,11 +239,11 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         </SheetContent>
       </Sheet>
 
-      <ReviewFormModal
-        isOpen={showReviewPrompt}
-        onClose={() => setShowReviewPrompt(false)}
+      <ServiceSurveyModal
+        isOpen={showServiceSurvey}
+        onClose={() => setShowServiceSurvey(false)}
         onSuccess={() => {
-          setShowReviewPrompt(false)
+          setShowServiceSurvey(false)
         }}
       />
     </>
