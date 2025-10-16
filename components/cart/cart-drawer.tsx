@@ -24,8 +24,9 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const supabase = createBrowserClient()
 
   const generateWhatsAppMessage = () => {
-    let message = "🌟 ¡Hola! Saludos desde *ALTERƎGO* 🌟\n\n"
-    message += "Me gustaría consultar sobre estos productos que me interesan:\n\n"
+    let message = "✨🌟 *¡Hola! Saludos desde ALTERƎGO* 🌟✨\n\n"
+    message += "💝 Me encantaría consultar sobre estos productos:\n\n"
+    message += "═══════════════════════\n\n"
 
     let subtotalSinDescuento = 0
     let descuentoTotal = 0
@@ -37,41 +38,65 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       const subtotal = precioUnitario * item.quantity
       const subtotalOriginal = precioOriginal * item.quantity
 
-      message += `🎁 *${item.name}*\n`
-      message += `   📦 Cantidad: ${item.quantity} ${item.quantity === 1 ? "unidad" : "unidades"}\n`
+      message += `🛍️ *PRODUCTO ${index + 1}*\n`
+      message += `💎 *${item.name}*\n\n`
 
-      if (descuento > 0) {
-        message += `   💰 Precio: $${precioUnitario.toLocaleString("es-CO")} COP\n`
-        message += `   🏷️ Descuento: ${descuento}% OFF\n`
-        message += `   ~~$${precioOriginal.toLocaleString("es-CO")}~~ → $${precioUnitario.toLocaleString("es-CO")} COP\n`
-        descuentoTotal += subtotalOriginal - subtotal
-      } else {
-        message += `   💰 Precio: $${precioUnitario.toLocaleString("es-CO")} COP\n`
+      // Descripción del producto (primeras 80 caracteres)
+      if (item.description) {
+        const shortDescription =
+          item.description.length > 80 ? item.description.substring(0, 80) + "..." : item.description
+        message += `📝 _${shortDescription}_\n\n`
       }
 
-      message += `   💵 Subtotal: $${subtotal.toLocaleString("es-CO")} COP\n`
+      // Enlace a la imagen del producto - WhatsApp mostrará vista previa automáticamente
+      if (item.image) {
+        message += `📸 *Imagen del producto:*\n${item.image}\n\n`
+      }
+
+      // Información de precio y cantidad con emojis
+      message += `📦 *Cantidad:* ${item.quantity} ${item.quantity === 1 ? "unidad" : "unidades"}\n`
+
+      if (descuento > 0) {
+        message += `🏷️ *Descuento:* ${descuento}% OFF 🎉\n`
+        message += `💰 *Precio original:* ~~$${precioOriginal.toLocaleString("es-CO")}~~\n`
+        message += `✨ *Precio con descuento:* $${precioUnitario.toLocaleString("es-CO")} COP\n`
+        message += `💵 *Subtotal:* $${subtotal.toLocaleString("es-CO")} COP\n`
+        message += `🎁 *¡Ahorras $${(precioOriginal - precioUnitario).toLocaleString("es-CO")} por unidad!*\n`
+        descuentoTotal += subtotalOriginal - subtotal
+      } else {
+        message += `💰 *Precio unitario:* $${precioUnitario.toLocaleString("es-CO")} COP\n`
+        message += `💵 *Subtotal:* $${subtotal.toLocaleString("es-CO")} COP\n`
+      }
 
       if (index < items.length - 1) {
-        message += "\n"
+        message += "\n─────────────────────\n\n"
       }
 
       subtotalSinDescuento += subtotalOriginal
     })
 
-    message += "\n✨ *RESUMEN* ✨\n\n"
+    message += "\n═══════════════════════\n"
+    message += "🎯 *RESUMEN DE TU PEDIDO* 🎯\n"
+    message += "═══════════════════════\n\n"
 
     if (descuentoTotal > 0) {
-      message += `💳 Subtotal: $${subtotalSinDescuento.toLocaleString("es-CO")} COP\n`
-      message += `🎉 Ahorro: -$${descuentoTotal.toLocaleString("es-CO")} COP\n`
-      message += `✅ *Total:* $${total.toLocaleString("es-CO")} COP\n\n`
+      message += `💳 *Subtotal:* $${subtotalSinDescuento.toLocaleString("es-CO")} COP\n`
+      message += `🎉 *Descuento total:* -$${descuentoTotal.toLocaleString("es-CO")} COP\n`
+      message += `✅ *TOTAL A PAGAR:* *$${total.toLocaleString("es-CO")} COP* 💰\n\n`
+      message += `🎁 *¡Estás ahorrando $${descuentoTotal.toLocaleString("es-CO")} COP!* 🎁\n\n`
     } else {
-      message += `✅ *Total:* $${total.toLocaleString("es-CO")} COP\n\n`
+      message += `✅ *TOTAL A PAGAR:* *$${total.toLocaleString("es-CO")} COP* 💰\n\n`
     }
 
-    message += "📸 _Las fotos de los productos las enviaré en el siguiente mensaje_\n\n"
-    message += "¿Están disponibles? 😊\n"
-    message += "¿Cuáles son las opciones de pago y envío? 🚚💳\n\n"
-    message += "¡Gracias! 🙌"
+    message += "═══════════════════════\n\n"
+    message += "📋 *Me gustaría confirmar:*\n\n"
+    message += "✔️ ¿Los productos están disponibles?\n"
+    message += "✔️ ¿Cuáles son las opciones de pago? 💳\n"
+    message += "✔️ ¿Cuál es el costo y tiempo de envío? 🚚\n\n"
+    message += "═══════════════════════\n\n"
+    message += "💬 _Quedo atento/a a su respuesta_ 😊\n\n"
+    message += "🙏 ¡Muchas gracias por su atención!\n"
+    message += "✨ *ALTERƎGO - Despierta tu lado más seductor* ✨"
 
     return encodeURIComponent(message)
   }

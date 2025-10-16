@@ -41,6 +41,49 @@ export function convertSupabaseToAdmin(product: SupabaseProduct): AdminProduct {
   }
 }
 
+export async function getFeaturedProducts(): Promise<SupabaseProduct[]> {
+  const supabase = getSupabaseClient()
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("featured", true)
+    .eq("active", true)
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    console.error("[v0] Error fetching featured products:", error)
+    return []
+  }
+
+  return data || []
+}
+
+export function convertSupabaseToProduct(product: SupabaseProduct): {
+  id: string
+  name: string
+  price: number
+  original_price?: number
+  discount?: number
+  image: string
+  category: string
+  description: string
+  stock: number
+  featured?: boolean
+} {
+  return {
+    id: product.id,
+    name: product.name,
+    price: product.price,
+    original_price: product.original_price,
+    discount: product.discount,
+    image: product.images[0] || "/placeholder.svg",
+    category: product.category,
+    description: product.description,
+    stock: product.stock,
+    featured: product.featured,
+  }
+}
+
 export async function getProducts(): Promise<SupabaseProduct[]> {
   const supabase = getSupabaseClient()
   const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false })
@@ -138,6 +181,79 @@ export async function updateProductStock(id: string, quantity: number): Promise<
 
   if (updateError) {
     console.error("[v0] Error updating stock:", updateError)
+    return false
+  }
+
+  return true
+}
+
+export interface SupabaseReview {
+  id: string
+  product_id?: string
+  order_id?: string
+  customer_name: string
+  customer_email?: string
+  rating: number
+  comment: string
+  delivery_rating?: number
+  delivery_comment?: string
+  verified_purchase: boolean
+  approved: boolean
+  is_offensive?: boolean
+  created_at: string
+  updated_at: string
+}
+
+export async function getReviews(): Promise<(SupabaseReview & { product_name?: string })[]> {
+  const supabase = getSupabaseClient()
+  const { data, error } = await supabase
+    .from("reviews")
+    .select(`
+      *,
+      products (
+        name
+      )
+    `)
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    console.error("[v0] Error fetching reviews:", error)
+    return []
+  }
+
+  return (data || []).map((review: any) => ({
+    ...review,
+    product_name: review.products?.name,
+  }))
+}
+
+export async function deleteReview(reviewId: string): Promise<boolean> {
+  const supabase = getSupabaseClient()
+  const { error } = await supabase.from("reviews").delete().eq("id", reviewId)
+
+  if (error) {
+    console.error("[v0] Error deleting review:", error)
+    return false
+  }
+
+  return true
+}
+
+export async function updateReviewStatus(
+  reviewId: string,
+  approved?: boolean,
+  isOffensive?: boolean,
+): Promise<boolean> {
+  const supabase = getSupabaseClient()
+
+  const updates: any = { updated_at: new Date().toISOString() }
+  if (approved !== undefined) updates.approved = approved
+  if (isOffensive !== undefined) updates.is_offensive = isOffensive
+
+  const { error } = await supabase.from("reviews").update(updates).eq("id", reviewId)
+
+  if (error) {
+    console.error("[v0] Error updating review status:", error)
     return false
   }
 

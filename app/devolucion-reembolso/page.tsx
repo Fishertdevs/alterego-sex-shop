@@ -5,9 +5,9 @@ export default function DevolucionReembolsoPage() {
     <div className="min-h-screen bg-background">
       <Navigation />
       <main className="container mx-auto px-4 py-16 max-w-4xl">
-        <h1 className="font-serif text-4xl font-bold mb-8">Política de Devolución y Reembolso</h1>
+        <h1 className="font-serif text-4xl font-bold mb-8 text-foreground">Política de Devolución y Reembolso</h1>
 
-        <div className="prose prose-lg max-w-none space-y-6">
+        <div className="prose prose-lg max-w-none space-y-6 text-foreground">
           <section>
             <h2 className="font-serif text-2xl font-semibold mb-4">1. Derecho de Devolución</h2>
             <p>
@@ -85,7 +85,7 @@ export default function DevolucionReembolsoPage() {
             </p>
           </section>
 
-          <p className="text-sm text-muted-foreground mt-8">Última actualización: Octubre 2025</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-8">Última actualización: Octubre 2025</p>
         </div>
       </main>
     </div>

@@ -7,12 +7,13 @@ import { Navigation } from "@/components/navigation"
 import { AdminStats } from "@/components/admin/admin-stats"
 import { ProductManager } from "@/components/admin/product-manager"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Shield, Package, BarChart3, ShoppingBag, Settings } from "lucide-react"
+import { Shield, Package, BarChart3, ShoppingBag, Settings, Star } from "lucide-react"
 import { AnalyticsDashboard } from "@/components/admin/analytics-dashboard"
 import { StoreSettings } from "@/components/admin/store-settings"
 import { NotificationsPanel } from "@/components/admin/notifications-panel"
 import { getAdminOrders, getAdminProducts } from "@/lib/admin-storage"
 import { OrdersCustomersManager } from "@/components/admin/orders-customers-manager"
+import { ReviewsManager } from "@/components/admin/reviews-manager"
 
 export default function AdminPage() {
   const { user, isLoading } = useAuth()
@@ -143,7 +144,7 @@ export default function AdminPage() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5 bg-muted">
+            <TabsList className="grid w-full grid-cols-6 bg-muted">
               <TabsTrigger value="dashboard" className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" />
                 Dashboard
@@ -155,6 +156,10 @@ export default function AdminPage() {
               <TabsTrigger value="orders" className="flex items-center gap-2">
                 <ShoppingBag className="h-4 w-4" />
                 Pedidos y Clientes
+              </TabsTrigger>
+              <TabsTrigger value="reviews" className="flex items-center gap-2">
+                <Star className="h-4 w-4" />
+                Reseñas
               </TabsTrigger>
               <TabsTrigger value="analytics" className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" />
@@ -182,6 +187,10 @@ export default function AdminPage() {
 
             <TabsContent value="orders">
               <OrdersCustomersManager />
+            </TabsContent>
+
+            <TabsContent value="reviews">
+              <ReviewsManager />
             </TabsContent>
 
             <TabsContent value="analytics">

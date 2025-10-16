@@ -5,9 +5,9 @@ export default function PoliticasCookiesPage() {
     <div className="min-h-screen bg-background">
       <Navigation />
       <main className="container mx-auto px-4 py-16 max-w-4xl">
-        <h1 className="font-serif text-4xl font-bold mb-8">Políticas de Cookies</h1>
+        <h1 className="font-serif text-4xl font-bold mb-8 text-foreground">Políticas de Cookies</h1>
 
-        <div className="prose prose-lg max-w-none space-y-6">
+        <div className="prose prose-lg max-w-none space-y-6 text-foreground">
           <section>
             <h2 className="font-serif text-2xl font-semibold mb-4">¿Qué son las Cookies?</h2>
             <p>
@@ -60,7 +60,7 @@ export default function PoliticasCookiesPage() {
             </p>
           </section>
 
-          <p className="text-sm text-muted-foreground mt-8">Última actualización: Octubre 2025</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-8">Última actualización: Octubre 2025</p>
         </div>
       </main>
     </div>
