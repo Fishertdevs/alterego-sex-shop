@@ -42,31 +42,56 @@ export function PostSaleSurveyForm({
     setError("")
     setLoading(true)
 
+    console.log("[v0] Iniciando envío de encuesta pos venta")
+    console.log("[v0] Token:", token)
+    console.log("[v0] Datos del formulario:", formData)
+
     if (formData.delivery_rating === 0) {
       setError("Por favor califica la entrega")
       setLoading(false)
       return
     }
 
+    if (!formData.customer_name.trim()) {
+      setError("Por favor ingresa tu nombre")
+      setLoading(false)
+      return
+    }
+
     try {
-      const { error: insertError } = await supabase.from("post_sale_surveys").insert([
-        {
-          customer_name: formData.customer_name,
-          delivery_rating: formData.delivery_rating,
-          comment: formData.comment,
-          product_image: productImage,
-          order_id: orderId,
-          product_id: productId,
-          token: token,
-        },
-      ])
+      const surveyData = {
+        customer_name: formData.customer_name.trim(),
+        delivery_rating: formData.delivery_rating,
+        comment: formData.comment.trim() || null,
+        product_image: productImage || null,
+        order_id: orderId || null,
+        product_id: productId || null,
+        token: token,
+      }
 
-      if (insertError) throw insertError
+      console.log("[v0] Datos a insertar:", surveyData)
 
+      const { data, error: insertError } = await supabase.from("post_sale_surveys").insert([surveyData]).select()
+
+      if (insertError) {
+        console.error("[v0] Error de Supabase:", insertError)
+        throw insertError
+      }
+
+      console.log("[v0] Encuesta enviada exitosamente:", data)
       onSuccess()
-    } catch (err) {
-      console.error("Error submitting post-sale survey:", err)
-      setError("Error al enviar la encuesta. Por favor intenta de nuevo.")
+    } catch (err: any) {
+      console.error("[v0] Error al enviar encuesta:", err)
+
+      if (err.code === "23505") {
+        setError("Esta encuesta ya ha sido completada anteriormente")
+      } else if (err.code === "42501") {
+        setError("No tienes permisos para enviar esta encuesta. Por favor contacta al administrador.")
+      } else if (err.message?.includes("JWT")) {
+        setError("Error de autenticación. Por favor recarga la página e intenta nuevamente.")
+      } else {
+        setError(`Error al enviar la encuesta: ${err.message || "Por favor intenta de nuevo"}`)
+      }
     } finally {
       setLoading(false)
     }
@@ -98,8 +123,8 @@ export function PostSaleSurveyForm({
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-background rounded-lg border border-border">
-      <h2 className="text-2xl font-bold text-foreground mb-6 font-serif text-center">Encuesta Pos Venta</h2>
+    <div className="max-w-2xl mx-auto p-6 bg-card rounded-lg border border-border shadow-lg">
+      <h2 className="text-2xl font-bold text-foreground mb-6 font-serif text-center">Califica Nuestro Servicio</h2>
 
       {productImage && (
         <div className="mb-6 flex justify-center">
@@ -118,7 +143,7 @@ export function PostSaleSurveyForm({
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <Label htmlFor="name" className="font-serif text-lg">
+          <Label htmlFor="name" className="font-serif text-base">
             Nombre *
           </Label>
           <Input
@@ -132,33 +157,42 @@ export function PostSaleSurveyForm({
         </div>
 
         <div>
-          <Label className="font-serif text-lg">Califica la entrega *</Label>
+          <Label className="font-serif text-base">Califica nuestro servicio *</Label>
           {renderStars()}
         </div>
 
         <div>
-          <Label htmlFor="comment" className="font-serif text-lg">
-            Comentarios
+          <Label htmlFor="comment" className="font-serif text-base">
+            Comentarios adicionales (opcional)
           </Label>
           <Textarea
             id="comment"
             value={formData.comment}
             onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
-            rows={5}
-            placeholder="Cuéntanos sobre tu experiencia con la entrega del producto..."
+            rows={4}
+            placeholder="Cuéntanos sobre tu experiencia..."
             className="bg-background border-border font-serif mt-2"
           />
         </div>
 
-        {error && <p className="text-sm text-destructive font-serif">{error}</p>}
+        {error && (
+          <div className="p-3 bg-destructive/10 border border-destructive rounded-md">
+            <p className="text-sm text-destructive font-serif">{error}</p>
+          </div>
+        )}
 
-        <Button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-serif text-lg py-6"
-        >
-          {loading ? "Enviando..." : "Enviar Encuesta"}
-        </Button>
+        <div className="flex gap-3">
+          <Button type="button" variant="outline" onClick={() => window.history.back()} className="flex-1 font-serif">
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            disabled={loading}
+            className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground font-serif"
+          >
+            {loading ? "Enviando..." : "Enviar Encuesta"}
+          </Button>
+        </div>
       </form>
     </div>
   )
