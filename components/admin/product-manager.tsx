@@ -92,15 +92,20 @@ export function ProductManager() {
       alert(`Solo se agregarán ${remainingSlots} imagen(es) para no exceder el límite de 5`)
     }
 
+    console.log("[v0] Uploading images:", filesToProcess.length)
+
     const newImages: string[] = []
     for (const file of filesToProcess) {
       try {
         const base64 = await convertImageToBase64(file)
         newImages.push(base64)
+        console.log("[v0] Image converted successfully")
       } catch (error) {
         console.error("[v0] Error converting image:", error)
       }
     }
+
+    console.log("[v0] Total images after upload:", newProduct.images.length + newImages.length)
 
     setNewProduct((prev) => ({
       ...prev,
@@ -216,6 +221,10 @@ export function ProductManager() {
 
     try {
       const supabase = createBrowserClient()
+
+      console.log("[v0] Updating product:", editingProduct.id)
+      console.log("[v0] Images to save:", editingProduct.images.length)
+      console.log("[v0] Images array:", editingProduct.images)
 
       const { error } = await supabase
         .from("products")
@@ -899,25 +908,50 @@ export function ProductManager() {
                         multiple
                         onChange={async (e) => {
                           const files = Array.from(e.target.files || [])
+                          if (files.length === 0) return
+
+                          const remainingSlots = 5 - editingProduct.images.length
+                          if (remainingSlots <= 0) {
+                            alert("Solo puedes tener un máximo de 5 imágenes por producto")
+                            return
+                          }
+
+                          const filesToProcess = files.slice(0, remainingSlots)
+                          if (files.length > remainingSlots) {
+                            alert(`Solo se agregarán ${remainingSlots} imagen(es) para no exceder el límite de 5`)
+                          }
+
+                          console.log("[v0] Uploading images in edit mode:", filesToProcess.length)
+
                           const newImages: string[] = []
-                          for (const file of files) {
+                          for (const file of filesToProcess) {
                             try {
                               const base64 = await convertImageToBase64(file)
                               newImages.push(base64)
+                              console.log("[v0] Image converted successfully in edit mode")
                             } catch (error) {
                               console.error("[v0] Error converting image:", error)
                             }
                           }
+
+                          console.log(
+                            "[v0] Total images after upload in edit mode:",
+                            editingProduct.images.length + newImages.length,
+                          )
+
                           setEditingProduct((prev) =>
                             prev ? { ...prev, images: [...prev.images, ...newImages] } : null,
                           )
                         }}
                         className="flex-1"
                         id="edit-image-upload"
+                        disabled={editingProduct.images.length >= 5}
                       />
                       <Label
                         htmlFor="edit-image-upload"
-                        className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                        className={`cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 ${
+                          editingProduct.images.length >= 5 ? "opacity-50 cursor-not-allowed" : ""
+                        }`}
                       >
                         <Upload className="h-4 w-4 mr-2" />
                         Agregar

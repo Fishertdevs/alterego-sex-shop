@@ -4,7 +4,7 @@ import { useCart } from "@/contexts/cart-context"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { Minus, Plus, Trash2, ShoppingBag, MessageCircle, Instagram } from "lucide-react"
+import { Minus, Plus, Trash2, ShoppingBag, MessageCircle } from "lucide-react"
 import Image from "next/image"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useStoreSettings } from "@/hooks/use-store-settings"
@@ -19,7 +19,6 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const { items, updateQuantity, removeFromCart, total, clearCart } = useCart()
   const { settings } = useStoreSettings()
   const [showServiceSurvey, setShowServiceSurvey] = useState(false)
-  const [saleChannel, setSaleChannel] = useState<"whatsapp" | "instagram">("whatsapp")
   const [purchaseTotal, setPurchaseTotal] = useState(0)
   const supabase = createBrowserClient()
 
@@ -36,7 +35,6 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       message += `    💰 Precio unitario: $${precioUnitario.toLocaleString("es-CO")} COP\n`
       message += `    💸 Subtotal: $${subtotal.toLocaleString("es-CO")} COP\n`
 
-      // Generar URL del producto para que el admin pueda verlo
       const productUrl = `${window.location.origin}/productos/${item.category}?producto=${item.id}`
       message += `    🔗 Ver producto: ${productUrl}\n\n`
     })
@@ -52,8 +50,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     return encodeURIComponent(message)
   }
 
-  const handleCheckout = async (channel: "whatsapp" | "instagram") => {
-    setSaleChannel(channel)
+  const handleCheckout = async () => {
     setPurchaseTotal(total)
 
     try {
@@ -83,7 +80,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
           customer_municipality: "Por confirmar",
           shipping_cost: 0,
           delivered: false,
-          notes: `Orden iniciada por ${channel === "whatsapp" ? "WhatsApp" : "Instagram"}. Información del cliente pendiente.`,
+          notes: "Orden iniciada por WhatsApp. Información del cliente pendiente.",
         })
         .select()
         .single()
@@ -98,7 +95,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       await supabase.from("notifications").insert({
         type: "new_sale",
         title: "Nueva Venta Pendiente",
-        message: `Se ha iniciado una venta por ${channel === "whatsapp" ? "WhatsApp" : "Instagram"} por un total de $${total.toLocaleString("es-CO")} COP`,
+        message: `Se ha iniciado una venta por WhatsApp por un total de $${total.toLocaleString("es-CO")} COP`,
         related_id: order.id,
       })
 
@@ -106,18 +103,11 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
       clearCart()
 
-      if (channel === "whatsapp") {
-        const whatsappNumber = settings?.store_phone || "573168192054"
-        const cleanNumber = whatsappNumber.replace(/[\s\-()+ ]/g, "")
-        const message = generateWhatsAppMessage()
-        console.log("[v0] Redirecting to WhatsApp:", cleanNumber)
-        window.open(`https://wa.me/${cleanNumber}?text=${message}`, "_blank", "noopener,noreferrer")
-      } else {
-        const instagramUrl =
-          settings?.instagram_url || "https://www.instagram.com/alterego.shop1?igsh=MTdrcnY5bjI0czFobg=="
-        console.log("[v0] Redirecting to Instagram:", instagramUrl)
-        window.open(instagramUrl, "_blank", "noopener,noreferrer")
-      }
+      const whatsappNumber = settings?.store_phone || "573168192054"
+      const cleanNumber = whatsappNumber.replace(/[\s\-()+ ]/g, "")
+      const message = generateWhatsAppMessage()
+      console.log("[v0] Redirecting to WhatsApp:", cleanNumber)
+      window.open(`https://wa.me/${cleanNumber}?text=${message}`, "_blank", "noopener,noreferrer")
 
       onClose()
       setTimeout(() => {
@@ -168,13 +158,11 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                             className="object-cover rounded-md"
                           />
                         </div>
-
                         <div className="flex-1 min-w-0">
                           <h3 className="text-sm font-medium text-foreground truncate font-serif">{item.name}</h3>
                           <p className="text-sm text-muted-foreground">${item.price.toLocaleString("es-CO")} COP</p>
                           <p className="text-xs text-muted-foreground">Stock: {item.stock}</p>
                         </div>
-
                         <div className="flex items-center space-x-2">
                           <Button
                             variant="outline"
@@ -207,27 +195,18 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                     ))}
                   </div>
                 </div>
-
                 <div className="border-t border-border pt-4 space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-semibold text-foreground font-serif">Total:</span>
                     <span className="text-lg font-bold text-accent">${total.toLocaleString("es-CO")} COP</span>
                   </div>
-
                   <div className="space-y-2">
                     <Button
-                      onClick={() => handleCheckout("whatsapp")}
+                      onClick={handleCheckout}
                       className="w-full bg-black hover:bg-black/90 text-white border border-[#D4AF37] font-serif"
                     >
                       <MessageCircle className="h-4 w-4 mr-2" />
                       Finalizar por WhatsApp
-                    </Button>
-                    <Button
-                      onClick={() => handleCheckout("instagram")}
-                      className="w-full bg-[#8B1538] hover:bg-[#6B0F2A] text-white font-serif"
-                    >
-                      <Instagram className="h-4 w-4 mr-2" />
-                      Finalizar por Instagram
                     </Button>
                     <Button variant="outline" onClick={clearCart} className="w-full bg-transparent font-serif">
                       Vaciar Carrito
@@ -239,7 +218,6 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
           </div>
         </SheetContent>
       </Sheet>
-
       <ServiceSurveyModal
         isOpen={showServiceSurvey}
         onClose={() => setShowServiceSurvey(false)}

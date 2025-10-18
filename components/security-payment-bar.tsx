@@ -15,34 +15,33 @@ export function SecurityPaymentBar() {
 
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
             <span className="text-[10px] sm:text-xs text-gray-300">Aceptamos:</span>
-
             <div className="flex items-center gap-1">
               <Image
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-boVYhfotN6l94rh7jOPfMdLvyDf9Nv.png"
+                src="/images/nequi.jfif"
                 alt="Nequi"
-                width={45}
-                height={16}
-                className="object-contain"
+                width={50}
+                height={24}
+                className="h-6 w-auto object-contain"
               />
             </div>
 
             <div className="flex items-center gap-1">
               <Image
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-aItsysxKBj6KLvyvpOId3ypjzvPzNO.png"
+                src="/images/daviplata.jfif"
                 alt="Daviplata"
-                width={55}
-                height={16}
-                className="object-contain"
+                width={50}
+                height={24}
+                className="h-6 w-auto object-contain"
               />
             </div>
 
             <div className="flex items-center gap-1">
               <Image
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-XRdHI1NihmvpuI5DYeeMeHRNjF0aWb.png"
+                src="/images/mastercard.jfif"
                 alt="Mastercard"
-                width={30}
-                height={18}
-                className="object-contain"
+                width={50}
+                height={24}
+                className="h-6 w-auto object-contain"
               />
               <span className="text-[10px] sm:text-xs">Débito/Crédito</span>
             </div>

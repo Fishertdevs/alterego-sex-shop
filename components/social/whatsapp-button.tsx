@@ -13,14 +13,14 @@ export function WhatsAppButton() {
     e.preventDefault()
     e.stopPropagation()
 
-    const rawNumber = settings?.store_phone || "+57 3168192054"
+    const rawNumber = settings?.store_phone || "+57 3133462402"
     const phoneNumber = rawNumber.replace(/[\s\-()+ ]/g, "")
 
     console.log("[v0] WhatsApp Button - Click event triggered")
     console.log("[v0] WhatsApp Button - Raw number:", rawNumber)
     console.log("[v0] WhatsApp Button - Cleaned number:", phoneNumber)
 
-    const message = "Hola, vengo desde la web de ALTERƎGO y me gustaría obtener más información."
+    const message = "Hola Alterego, quiero más información de los productos de la tienda"
     const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
 
     console.log("[v0] WhatsApp Button - Opening URL:", url)

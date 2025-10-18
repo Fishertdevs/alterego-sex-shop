@@ -13,7 +13,7 @@ export default function ContactoPage() {
     {
       icon: Phone,
       title: "Teléfono",
-      details: [settings?.store_phone || "+57 3168192054", "WhatsApp disponible"],
+      details: [settings?.store_phone || "+57 3133462402", "WhatsApp disponible"],
     },
     {
       icon: Mail,
@@ -27,9 +27,9 @@ export default function ContactoPage() {
     },
   ]
 
-  const rawWhatsappNumber = settings?.store_phone || "+57 3168192054"
+  const rawWhatsappNumber = settings?.store_phone || "+57 3133462402"
   const whatsappNumber = rawWhatsappNumber.replace(/[\s\-()+ ]/g, "")
-  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Hola, vengo desde la web de ALTERƎGO y me gustaría obtener más información.")}`
+  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Hola Alterego, quiero más información de los productos de la tienda")}`
 
   console.log("[v0] Contacto Page - Raw WhatsApp number:", rawWhatsappNumber)
   console.log("[v0] Contacto Page - Cleaned WhatsApp number:", whatsappNumber)

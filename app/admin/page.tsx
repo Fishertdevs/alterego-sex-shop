@@ -7,13 +7,13 @@ import { Navigation } from "@/components/navigation"
 import { AdminStats } from "@/components/admin/admin-stats"
 import { ProductManager } from "@/components/admin/product-manager"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Shield, Package, BarChart3, ShoppingBag, Settings, Star } from "lucide-react"
-import { AnalyticsDashboard } from "@/components/admin/analytics-dashboard"
+import { Shield, Package, BarChart3, ShoppingBag, Settings, Star, Bell } from "lucide-react"
+import { DashboardStats } from "@/components/admin/dashboard-stats"
 import { StoreSettings } from "@/components/admin/store-settings"
-import { NotificationsPanel } from "@/components/admin/notifications-panel"
 import { getAdminOrders, getAdminProducts } from "@/lib/admin-storage"
 import { OrdersCustomersManager } from "@/components/admin/orders-customers-manager"
 import { ReviewsManager } from "@/components/admin/reviews-manager"
+import { NotificationsPanel } from "@/components/admin/notifications-panel"
 
 export default function AdminPage() {
   const { user, isLoading } = useAuth()
@@ -144,7 +144,7 @@ export default function AdminPage() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6 bg-muted">
+            <TabsList className="grid w-full grid-cols-7 bg-muted">
               <TabsTrigger value="dashboard" className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" />
                 Dashboard
@@ -161,6 +161,10 @@ export default function AdminPage() {
                 <Star className="h-4 w-4" />
                 Reseñas
               </TabsTrigger>
+              <TabsTrigger value="notifications" className="flex items-center gap-2">
+                <Bell className="h-4 w-4" />
+                Notificaciones
+              </TabsTrigger>
               <TabsTrigger value="analytics" className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" />
                 Análisis
@@ -173,12 +177,7 @@ export default function AdminPage() {
 
             <TabsContent value="dashboard" className="space-y-6">
               <AdminStats />
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                  <AnalyticsDashboard />
-                </div>
-                <NotificationsPanel />
-              </div>
+              <DashboardStats />
             </TabsContent>
 
             <TabsContent value="products">
@@ -193,8 +192,12 @@ export default function AdminPage() {
               <ReviewsManager />
             </TabsContent>
 
+            <TabsContent value="notifications">
+              <NotificationsPanel />
+            </TabsContent>
+
             <TabsContent value="analytics">
-              <AnalyticsDashboard />
+              <DashboardStats />
             </TabsContent>
 
             <TabsContent value="settings">

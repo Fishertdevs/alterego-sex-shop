@@ -19,13 +19,10 @@ interface ServiceSurveyModalProps {
 export function ServiceSurveyModal({ isOpen, onClose, onSuccess }: ServiceSurveyModalProps) {
   const [formData, setFormData] = useState({
     customer_name: "",
-    customer_email: "",
     service_rating: 0,
-    delivery_rating: 0,
     comment: "",
   })
   const [hoveredServiceRating, setHoveredServiceRating] = useState(0)
-  const [hoveredDeliveryRating, setHoveredDeliveryRating] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
@@ -42,20 +39,11 @@ export function ServiceSurveyModal({ isOpen, onClose, onSuccess }: ServiceSurvey
       return
     }
 
-    if (formData.delivery_rating === 0) {
-      setError("Por favor califica la entrega")
-      setLoading(false)
-      return
-    }
-
     try {
-      // Insertar en tabla service_surveys
       const { error: insertError } = await supabase.from("service_surveys").insert([
         {
           customer_name: formData.customer_name,
-          customer_email: formData.customer_email,
           service_rating: formData.service_rating,
-          delivery_rating: formData.delivery_rating,
           comment: formData.comment,
         },
       ])
@@ -76,9 +64,8 @@ export function ServiceSurveyModal({ isOpen, onClose, onSuccess }: ServiceSurvey
   }
 
   const handleClose = () => {
-    setFormData({ customer_name: "", customer_email: "", service_rating: 0, delivery_rating: 0, comment: "" })
+    setFormData({ customer_name: "", service_rating: 0, comment: "" })
     setHoveredServiceRating(0)
-    setHoveredDeliveryRating(0)
     setError("")
     setSuccess(false)
     onClose()
@@ -145,35 +132,12 @@ export function ServiceSurveyModal({ isOpen, onClose, onSuccess }: ServiceSurvey
             </div>
 
             <div>
-              <Label htmlFor="email" className="font-serif">
-                Email (opcional)
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.customer_email}
-                onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })}
-                className="bg-background border-border font-serif"
-              />
-            </div>
-
-            <div>
               <Label className="font-serif">Califica nuestro servicio *</Label>
               {renderStars(
                 formData.service_rating,
                 hoveredServiceRating,
                 (rating) => setFormData({ ...formData, service_rating: rating }),
                 setHoveredServiceRating,
-              )}
-            </div>
-
-            <div>
-              <Label className="font-serif">Califica la entrega *</Label>
-              {renderStars(
-                formData.delivery_rating,
-                hoveredDeliveryRating,
-                (rating) => setFormData({ ...formData, delivery_rating: rating }),
-                setHoveredDeliveryRating,
               )}
             </div>
 

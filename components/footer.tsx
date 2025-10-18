@@ -17,7 +17,7 @@ export function Footer() {
     {
       name: "WhatsApp",
       icon: MessageCircle,
-      url: "https://wa.me/573001234567",
+      url: "https://wa.me/573133462402?text=Hola%20Alterego%2C%20quiero%20m%C3%A1s%20informaci%C3%B3n%20de%20los%20productos%20de%20la%20tienda",
     },
   ]
 
@@ -27,7 +27,7 @@ export function Footer() {
         <div className="flex flex-col items-center gap-6 mb-6">
           {/* Logo */}
           <Image
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-wYVRkKtwn97uTDeW7IUUlnxwjyANRa.png"
+            src="/images/design-mode/image(1).png"
             alt="ALTERƎGO Logo"
             width={120}
             height={120}

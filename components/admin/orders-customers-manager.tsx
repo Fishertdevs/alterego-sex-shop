@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
+import { DeleteConfirmDialog } from "@/components/admin/delete-confirm-dialog"
 import {
   Users,
   Search,
@@ -48,15 +48,25 @@ interface Order {
   shipping_type: string
   shipping_cost: number
   shipping_company?: string
+  shipping_carrier?: string // Added shipping_carrier field
+  shipping_notes?: string // Added shipping_notes field
   tracking_number?: string
   order_status: string
   delivered: boolean
+  delivery_status?: string
   delivered_at?: string
   created_at: string
   updated_at: string
   notes?: string
   bank?: string // Added bank field to the interface
 }
+
+const deliveryStatusOptions = [
+  { value: "yes", label: "Sí" },
+  { value: "no", label: "No" },
+  { value: "returned", label: "Devuelto" },
+  { value: "in_transit", label: "En tránsito" },
+]
 
 export function OrdersCustomersManager() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -67,6 +77,9 @@ export function OrdersCustomersManager() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [selectedDepartment, setSelectedDepartment] = useState("")
   const [municipalities, setMunicipalities] = useState<Array<{ name: string; code: string }>>([])
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null)
 
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null)
   const [editingOrder, setEditingOrder] = useState<Partial<Order & { bank?: string }>>({}) // Include bank in editingOrder type
@@ -86,6 +99,8 @@ export function OrdersCustomersManager() {
     shipping_type: "",
     shipping_cost: "",
     shipping_company: "",
+    shipping_carrier: "", // Added shipping_carrier to newOrder state
+    shipping_notes: "", // Added shipping_notes to newOrder state
     notes: "",
   })
 
@@ -188,11 +203,14 @@ export function OrdersCustomersManager() {
         shipping_type: newOrder.shipping_type,
         shipping_cost: parseFormattedNumber(newOrder.shipping_cost),
         shipping_company: newOrder.shipping_company,
+        shipping_carrier: newOrder.shipping_carrier, // Added shipping_carrier to insert
+        shipping_notes: newOrder.shipping_notes, // Added shipping_notes to insert
         notes: newOrder.notes,
         products: [],
         payment_status: "pending",
         order_status: "pending",
         delivered: false,
+        delivery_status: "no", // Initialize delivery_status
       },
     ])
 
@@ -270,57 +288,14 @@ export function OrdersCustomersManager() {
     }
   }
 
-  const handleUpdateDeliveryStatus = async (orderId: string, delivered: boolean) => {
-    if (delivered) {
-      const order = orders.find((o) => o.id === orderId)
-      if (order && order.products && order.products.length > 0) {
-        console.log("[v0] Order marked as delivered, updating stock:", orderId)
-
-        // Actualizar el stock de cada producto
-        for (const product of order.products) {
-          const { data: currentProduct, error: fetchError } = await supabase
-            .from("products")
-            .select("stock")
-            .eq("id", product.id)
-            .single()
-
-          if (fetchError || !currentProduct) {
-            console.error("[v0] Error fetching product:", fetchError)
-            continue
-          }
-
-          const newStock = currentProduct.stock - product.quantity
-
-          if (newStock < 0) {
-            alert(`Stock insuficiente para el producto ${product.name}. Stock actual: ${currentProduct.stock}`)
-            return
-          }
-
-          const { error: updateError } = await supabase
-            .from("products")
-            .update({
-              stock: newStock,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", product.id)
-
-          if (updateError) {
-            console.error("[v0] Error updating stock:", updateError)
-            alert("Error al actualizar el stock")
-            return
-          }
-
-          console.log("[v0] Stock updated for product:", product.id, "New stock:", newStock)
-        }
-      }
-    }
-
+  const handleUpdateDeliveryStatus = async (orderId: string, deliveryStatus: string) => {
     const { error } = await supabase
       .from("orders")
       .update({
-        delivered,
-        delivered_at: delivered ? new Date().toISOString() : null,
-        order_status: delivered ? "delivered" : "shipped",
+        delivery_status: deliveryStatus,
+        delivered: deliveryStatus === "yes",
+        delivered_at: deliveryStatus === "yes" ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
       })
       .eq("id", orderId)
 
@@ -332,16 +307,19 @@ export function OrdersCustomersManager() {
     await loadOrders()
     if (selectedOrder?.id === orderId) {
       const updated = orders.find((o) => o.id === orderId)
-      if (updated) setSelectedOrder({ ...updated, delivered })
+      if (updated) setSelectedOrder({ ...updated, delivery_status: deliveryStatus })
     }
   }
 
   const handleDeleteOrder = async (orderId: string) => {
-    if (!confirm("¿Estás seguro de que deseas eliminar este pedido? Esta acción no se puede deshacer.")) {
-      return
-    }
+    setOrderToDelete(orderId)
+    setDeleteDialogOpen(true)
+  }
 
-    const { error } = await supabase.from("orders").delete().eq("id", orderId)
+  const confirmDeleteOrder = async () => {
+    if (!orderToDelete) return
+
+    const { error } = await supabase.from("orders").delete().eq("id", orderToDelete)
 
     if (error) {
       console.error("Error deleting order:", error)
@@ -350,10 +328,13 @@ export function OrdersCustomersManager() {
     }
 
     await loadOrders()
-    if (selectedOrder?.id === orderId) {
+    if (selectedOrder?.id === orderToDelete) {
       setIsDetailDialogOpen(false)
       setSelectedOrder(null)
     }
+
+    setDeleteDialogOpen(false)
+    setOrderToDelete(null)
   }
 
   const resetNewOrder = () => {
@@ -370,6 +351,8 @@ export function OrdersCustomersManager() {
       shipping_type: "",
       shipping_cost: "",
       shipping_company: "",
+      shipping_carrier: "", // Reset shipping_carrier
+      shipping_notes: "", // Reset shipping_notes
       notes: "",
     })
     setSelectedDepartment("")
@@ -386,6 +369,11 @@ export function OrdersCustomersManager() {
       payment_method: order.payment_method,
       bank: (order as any).bank || "", // Initialize bank from order data
       order_status: order.order_status,
+      delivery_status: order.delivery_status || "no",
+      shipping_type: order.shipping_type, // Added shipping fields to editing state
+      shipping_cost: order.shipping_cost,
+      shipping_carrier: order.shipping_carrier || "",
+      shipping_notes: order.shipping_notes || "",
     })
     setEditingDepartment(order.customer_department)
   }
@@ -409,6 +397,12 @@ export function OrdersCustomersManager() {
         payment_method: editingOrder.payment_method,
         bank: editingOrder.bank || null, // Update bank value
         order_status: editingOrder.order_status,
+        delivery_status: editingOrder.delivery_status,
+        delivered: editingOrder.delivery_status === "yes",
+        shipping_type: editingOrder.shipping_type, // Added shipping fields to update
+        shipping_cost: editingOrder.shipping_cost,
+        shipping_carrier: editingOrder.shipping_carrier || null,
+        shipping_notes: editingOrder.shipping_notes || null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", editingOrderId)
@@ -449,9 +443,16 @@ export function OrdersCustomersManager() {
           ? colombiaBanks.find((b) => b.value === (order as any).bank)?.label || (order as any).bank
           : "N/A",
         Estado: getStatusLabel(order.order_status),
-        Entregado: order.delivered ? "Sí" : "No",
+        Entregado:
+          deliveryStatusOptions.find((s) => s.value === order.delivery_status)?.label ||
+          (order.delivered ? "Sí" : "No"),
         "Fecha de Creación": formatDate(order.created_at),
         "Fecha de Entrega": order.delivered_at ? formatDate(order.delivered_at) : "N/A",
+        "Tipo de Envío": shippingTypes.find((t) => t.value === order.shipping_type)?.label || order.shipping_type, // Added shipping type to export
+        Transportadora: order.shipping_carrier
+          ? shippingCompanies.find((c) => c.value === order.shipping_carrier)?.label || order.shipping_carrier
+          : "N/A", // Added shipping carrier to export
+        "Notas Envío": order.shipping_notes || "N/A", // Added shipping notes to export
       }))
 
       console.log("[v0] Export data prepared:", exportData.length, "rows")
@@ -530,6 +531,69 @@ export function OrdersCustomersManager() {
       currency: "COP",
       minimumFractionDigits: 0,
     }).format(value)
+  }
+
+  // Moved stock update logic to handleUpdateStatus
+  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+    if (newStatus === "confirmed") {
+      const order = orders.find((o) => o.id === orderId)
+      if (order && order.products && order.products.length > 0) {
+        console.log("[v0] Order confirmed, updating stock and analytics:", orderId)
+
+        // Actualizar el stock de cada producto
+        for (const product of order.products) {
+          const { data: currentProduct, error: fetchError } = await supabase
+            .from("products")
+            .select("stock")
+            .eq("id", product.id)
+            .single()
+
+          if (fetchError || !currentProduct) {
+            console.error("[v0] Error fetching product:", fetchError)
+            continue
+          }
+
+          const newStock = currentProduct.stock - product.quantity
+
+          if (newStock < 0) {
+            alert(`Stock insuficiente para el producto ${product.id}. Stock actual: ${currentProduct.stock}`)
+            return
+          }
+
+          const { error: updateError } = await supabase
+            .from("products")
+            .update({
+              stock: newStock,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", product.id)
+
+          if (updateError) {
+            console.error("[v0] Error updating stock:", updateError)
+            alert("Error al actualizar el stock")
+            return
+          }
+
+          console.log("[v0] Stock updated for product:", product.id, "New stock:", newStock)
+        }
+      }
+    }
+
+    const { error } = await supabase
+      .from("orders")
+      .update({
+        order_status: newStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", orderId)
+
+    if (error) {
+      console.error("Error updating order status:", error)
+      alert("Error al actualizar el estado del pedido")
+      return
+    }
+
+    await loadOrders()
   }
 
   return (
@@ -770,6 +834,26 @@ export function OrdersCustomersManager() {
                             </SelectContent>
                           </Select>
                         </div>
+                        {/* Added shipping carrier and notes fields */}
+                        <div className="col-span-2">
+                          <Label htmlFor="shipping_carrier">Transportadora (Carrier)</Label>
+                          <Input
+                            id="shipping_carrier"
+                            value={newOrder.shipping_carrier}
+                            onChange={(e) => setNewOrder((prev) => ({ ...prev, shipping_carrier: e.target.value }))}
+                            placeholder="Ej: Servientrega, Interrapidísimo"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Label htmlFor="shipping_notes">Notas de Envío</Label>
+                          <Textarea
+                            id="shipping_notes"
+                            value={newOrder.shipping_notes}
+                            onChange={(e) => setNewOrder((prev) => ({ ...prev, shipping_notes: e.target.value }))}
+                            placeholder="Instrucciones especiales para el envío..."
+                            rows={2}
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -840,6 +924,7 @@ export function OrdersCustomersManager() {
                     <TableHead>Teléfono</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Pago</TableHead>
+                    <TableHead>Envío</TableHead> {/* Added Envío column */}
                     <TableHead>Estado</TableHead>
                     <TableHead>Entregado</TableHead>
                     <TableHead>Acciones</TableHead>
@@ -1012,6 +1097,94 @@ export function OrdersCustomersManager() {
 
                         <TableCell>
                           {isEditing ? (
+                            <div className="space-y-2 min-w-[180px]">
+                              <Select
+                                value={editingOrder.shipping_type || ""}
+                                onValueChange={(value) =>
+                                  setEditingOrder((prev) => ({ ...prev, shipping_type: value }))
+                                }
+                              >
+                                <SelectTrigger className="text-xs">
+                                  <SelectValue placeholder="Tipo de envío" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {shippingTypes.map((type) => (
+                                    <SelectItem key={type.value} value={type.value}>
+                                      {type.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                type="text"
+                                value={
+                                  editingOrder.shipping_cost
+                                    ? formatNumberInput(editingOrder.shipping_cost.toString())
+                                    : ""
+                                }
+                                onChange={(e) => {
+                                  const formatted = formatNumberInput(e.target.value)
+                                  setEditingOrder((prev) => ({
+                                    ...prev,
+                                    shipping_cost: parseFormattedNumber(formatted),
+                                  }))
+                                }}
+                                placeholder="Costo"
+                                className="text-xs"
+                              />
+                              <Select
+                                value={editingOrder.shipping_carrier || ""}
+                                onValueChange={(value) =>
+                                  setEditingOrder((prev) => ({ ...prev, shipping_carrier: value }))
+                                }
+                              >
+                                <SelectTrigger className="text-xs">
+                                  <SelectValue placeholder="Transportadora" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {shippingCompanies.map((company) => (
+                                    <SelectItem key={company.value} value={company.value}>
+                                      {company.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Textarea
+                                value={editingOrder.shipping_notes || ""}
+                                onChange={(e) =>
+                                  setEditingOrder((prev) => ({ ...prev, shipping_notes: e.target.value }))
+                                }
+                                placeholder="Notas (opcional)"
+                                className="text-xs h-16"
+                              />
+                            </div>
+                          ) : (
+                            <div className="space-y-1 text-xs">
+                              <div className="flex items-center gap-1">
+                                <Truck className="h-3 w-3 text-muted-foreground" />
+                                <span>
+                                  {shippingTypes.find((t) => t.value === order.shipping_type)?.label ||
+                                    order.shipping_type}
+                                </span>
+                              </div>
+                              <div className="text-muted-foreground">{formatCurrency(order.shipping_cost)}</div>
+                              {order.shipping_carrier && (
+                                <div className="text-muted-foreground">
+                                  {shippingCompanies.find((c) => c.value === order.shipping_carrier)?.label ||
+                                    order.shipping_carrier}
+                                </div>
+                              )}
+                              {order.shipping_notes && (
+                                <div className="text-muted-foreground italic truncate max-w-[150px]">
+                                  {order.shipping_notes}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </TableCell>
+
+                        <TableCell>
+                          {isEditing ? (
                             <Select
                               value={editingOrder.order_status || ""}
                               onValueChange={(value) => setEditingOrder((prev) => ({ ...prev, order_status: value }))}
@@ -1022,8 +1195,6 @@ export function OrdersCustomersManager() {
                               <SelectContent>
                                 <SelectItem value="pending">Pendiente</SelectItem>
                                 <SelectItem value="confirmed">Confirmado</SelectItem>
-                                <SelectItem value="shipped">Enviado</SelectItem>
-                                <SelectItem value="delivered">Entregado</SelectItem>
                                 <SelectItem value="cancelled">Descartado</SelectItem>
                               </SelectContent>
                             </Select>
@@ -1035,11 +1206,41 @@ export function OrdersCustomersManager() {
                         </TableCell>
 
                         <TableCell>
-                          <Checkbox
-                            checked={order.delivered}
-                            onCheckedChange={(checked) => handleUpdateDeliveryStatus(order.id, checked as boolean)}
-                            disabled={isEditing}
-                          />
+                          {isEditing ? (
+                            <Select
+                              value={editingOrder.delivery_status || "no"}
+                              onValueChange={(value) =>
+                                setEditingOrder((prev) => ({ ...prev, delivery_status: value }))
+                              }
+                            >
+                              <SelectTrigger className="text-xs w-[120px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {deliveryStatusOptions.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Select
+                              value={order.delivery_status || "no"}
+                              onValueChange={(value) => handleUpdateDeliveryStatus(order.id, value)}
+                            >
+                              <SelectTrigger className="text-xs w-[120px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {deliveryStatusOptions.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
                         </TableCell>
 
                         <TableCell>
@@ -1181,6 +1382,18 @@ export function OrdersCustomersManager() {
                         <span className="text-muted-foreground">Guía:</span> {selectedOrder.tracking_number}
                       </p>
                     )}
+                    {/* Added shipping carrier and notes to details */}
+                    {selectedOrder.shipping_carrier && (
+                      <p>
+                        <span className="text-muted-foreground">Transportadora (Carrier):</span>{" "}
+                        {selectedOrder.shipping_carrier}
+                      </p>
+                    )}
+                    {selectedOrder.shipping_notes && (
+                      <p>
+                        <span className="text-muted-foreground">Notas de Envío:</span> {selectedOrder.shipping_notes}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1212,15 +1425,25 @@ export function OrdersCustomersManager() {
                 </div>
               )}
 
-              <div className="flex items-center gap-2 border-t pt-4">
-                <Checkbox
-                  id="delivered"
-                  checked={selectedOrder.delivered}
-                  onCheckedChange={(checked) => handleUpdateDeliveryStatus(selectedOrder.id, checked as boolean)}
-                />
-                <Label htmlFor="delivered" className="cursor-pointer">
-                  Marcar como entregado {selectedOrder.delivered ? "✅" : ""}
+              <div className="flex items-center gap-4 border-t pt-4">
+                <Label htmlFor="delivery-status" className="text-sm font-medium">
+                  Estado de entrega:
                 </Label>
+                <Select
+                  value={selectedOrder.delivery_status || "no"}
+                  onValueChange={(value) => handleUpdateDeliveryStatus(selectedOrder.id, value)}
+                >
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {deliveryStatusOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {selectedOrder.delivered && selectedOrder.delivered_at && (
                   <span className="text-sm text-muted-foreground ml-auto">
                     Entregado: {formatDate(selectedOrder.delivered_at)}
@@ -1245,6 +1468,14 @@ export function OrdersCustomersManager() {
           )}
         </DialogContent>
       </Dialog>
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={confirmDeleteOrder}
+        title="¿Eliminar este pedido?"
+        description="Esta acción no se puede deshacer. El pedido será eliminado permanentemente de la base de datos."
+      />
     </>
   )
 }
