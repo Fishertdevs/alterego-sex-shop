@@ -38,8 +38,8 @@ export default function AdminPage() {
       console.log("[v0] Admin page - isAdminFromStorage:", isAdminFromStorage)
 
       if (!isAdminFromContext && !isAdminFromStorage) {
-        console.log("[v0] Admin page - Not admin, redirecting to /")
-        router.push("/")
+        console.log("[v0] Admin page - Not admin, redirecting to /admin/login")
+        router.push("/admin/login")
       } else {
         console.log("[v0] Admin page - Admin verified, showing dashboard")
       }

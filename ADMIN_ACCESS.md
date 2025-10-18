@@ -3,18 +3,30 @@
 ## Acceso al Panel de Administración
 
 ### URL Privada de Acceso
-Para acceder al panel de administración, ingrese directamente a:
 
-\`\`\`
-https://alterego-store.com.co/admin
-\`\`\`
+Para acceder al panel de administración, siga estos pasos:
 
-**IMPORTANTE:** Esta URL es privada y no está visible públicamente en el sitio web. Solo el administrador debe conocer esta ruta.
+1. **Ingrese a la página de login:**
+   \`\`\`
+   https://alterego-store.com.co/admin/login
+   \`\`\`
+
+2. **Ingrese su email de administrador:**
+   - Email: `altergo102@gmail.com`
+   - No se requiere contraseña, el acceso es automático al ingresar el email correcto
+
+3. **Acceso directo al panel:**
+   \`\`\`
+   https://alterego-store.com.co/admin
+   \`\`\`
+   (Si ya está autenticado, puede acceder directamente a esta URL)
+
+**IMPORTANTE:** Estas URLs son privadas y no están visibles públicamente en el sitio web. Solo el administrador debe conocer estas rutas.
 
 ### Credenciales de Acceso
 
-**Email:** admin@alterego.com  
-**Contraseña:** [Configurada en Supabase]
+**Email de Administrador:** `altergo102@gmail.com`  
+**Autenticación:** Automática al ingresar el email correcto
 
 ### Funcionalidades del Panel de Administración
 
