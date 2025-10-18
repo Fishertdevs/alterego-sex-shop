@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Star } from "lucide-react"
-import { createBrowserClient } from "@/lib/supabase/client"
+import { submitServiceSurvey } from "@/app/actions/submit-service-survey"
 
 interface ServiceSurveyModalProps {
   isOpen: boolean
@@ -26,7 +26,6 @@ export function ServiceSurveyModal({ isOpen, onClose, onSuccess }: ServiceSurvey
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
-  const supabase = createBrowserClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,31 +41,16 @@ export function ServiceSurveyModal({ isOpen, onClose, onSuccess }: ServiceSurvey
     try {
       console.log("[v0] ServiceSurveyModal - Intentando enviar encuesta:", formData)
 
-      const { data, error: insertError } = await supabase
-        .from("service_surveys")
-        .insert([
-          {
-            customer_name: formData.customer_name,
-            service_rating: formData.service_rating,
-            comment: formData.comment,
-          },
-        ])
-        .select()
+      const result = await submitServiceSurvey({
+        customer_name: formData.customer_name,
+        service_rating: formData.service_rating,
+        comment: formData.comment,
+      })
 
-      console.log("[v0] ServiceSurveyModal - Resultado de inserción:", { data, error: insertError })
+      console.log("[v0] ServiceSurveyModal - Resultado:", result)
 
-      if (insertError) {
-        console.error("[v0] ServiceSurveyModal - Error de Supabase:", insertError)
-
-        if (insertError.code === "42501") {
-          throw new Error(
-            "Error de permisos: Por favor contacta al administrador para configurar las políticas de seguridad.",
-          )
-        } else if (insertError.message.includes("RLS")) {
-          throw new Error("Error de seguridad: Las políticas de la base de datos necesitan ser configuradas.")
-        } else {
-          throw insertError
-        }
+      if (!result.success) {
+        throw new Error(result.error || "Error al enviar la encuesta")
       }
 
       console.log("[v0] ServiceSurveyModal - Encuesta enviada exitosamente")

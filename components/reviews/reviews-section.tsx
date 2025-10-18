@@ -22,6 +22,14 @@ interface Review {
   product_name?: string
 }
 
+interface ServiceSurvey {
+  id: string
+  customer_name: string
+  service_rating: number
+  comment?: string
+  created_at: string
+}
+
 export function ReviewsSection() {
   const [reviews, setReviews] = useState<Review[]>([])
   const [filteredReviews, setFilteredReviews] = useState<Review[]>([])
@@ -32,6 +40,26 @@ export function ReviewsSection() {
 
   useEffect(() => {
     loadReviews()
+
+    const channel = supabase
+      .channel("service_surveys_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "service_surveys",
+        },
+        () => {
+          console.log("[v0] Service survey changed, reloading...")
+          loadReviews()
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   useEffect(() => {
@@ -46,32 +74,56 @@ export function ReviewsSection() {
     try {
       console.log("[v0] Loading reviews from Supabase...")
 
-      const { data, error } = await supabase
-        .from("reviews")
-        .select(`
-          *,
-          products (
-            name
-          )
-        `)
-        .eq("approved", true)
-        .order("created_at", { ascending: false })
+      const [reviewsResult, surveysResult] = await Promise.all([
+        supabase
+          .from("reviews")
+          .select(`
+            *,
+            products (
+              name
+            )
+          `)
+          .eq("approved", true)
+          .order("created_at", { ascending: false }),
+        supabase.from("service_surveys").select("*").order("created_at", { ascending: false }),
+      ])
 
-      console.log("[v0] Reviews query result:", { data, error })
-      console.log("[v0] Number of reviews loaded:", data?.length || 0)
+      console.log("[v0] Reviews query result:", reviewsResult)
+      console.log("[v0] Service surveys query result:", surveysResult)
 
-      if (error) {
-        console.error("[v0] Error loading reviews:", error)
-        throw error
+      if (reviewsResult.error) {
+        console.error("[v0] Error loading reviews:", reviewsResult.error)
       }
 
-      const reviewsWithProductName = (data || []).map((review: any) => ({
+      if (surveysResult.error) {
+        console.error("[v0] Error loading service surveys:", surveysResult.error)
+      }
+
+      const reviewsWithProductName = (reviewsResult.data || []).map((review: any) => ({
         ...review,
         product_name: review.products?.name,
       }))
 
-      setReviews(reviewsWithProductName)
-      setFilteredReviews(reviewsWithProductName)
+      const surveysAsReviews: Review[] = (surveysResult.data || []).map((survey: ServiceSurvey) => ({
+        id: survey.id,
+        customer_name: survey.customer_name,
+        rating: survey.service_rating,
+        comment: survey.comment || "",
+        created_at: survey.created_at,
+        review_type: "pre_sale" as const,
+        approved: true,
+      }))
+
+      const allReviews = [...reviewsWithProductName, ...surveysAsReviews].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      )
+
+      console.log("[v0] Total reviews loaded:", allReviews.length)
+      console.log("[v0] Product reviews:", reviewsWithProductName.length)
+      console.log("[v0] Service surveys:", surveysAsReviews.length)
+
+      setReviews(allReviews)
+      setFilteredReviews(allReviews)
     } catch (error) {
       console.error("[v0] Error in loadReviews:", error)
     } finally {

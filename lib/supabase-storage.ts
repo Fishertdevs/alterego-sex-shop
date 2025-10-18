@@ -267,7 +267,7 @@ export interface ServiceSurvey {
   customer_name: string
   customer_email?: string
   service_rating: number
-  delivery_rating: number
+  delivery_rating?: number | null
   comment?: string
   created_at: string
 }

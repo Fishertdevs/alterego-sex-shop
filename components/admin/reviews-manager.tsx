@@ -21,11 +21,21 @@ import { getReviews, deleteReview, updateReviewStatus } from "@/lib/supabase-sto
 import type { SupabaseReview } from "@/lib/supabase-storage"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
+import { createBrowserClient } from "@/lib/supabase/client" // Assuming this is the import for createBrowserClient
 
 type ReviewWithProduct = SupabaseReview & {
   product_name?: string
   review_type?: "pre_sale" | "post_sale"
   images?: string[]
+}
+
+interface ServiceSurvey {
+  id: string
+  customer_name: string
+  customer_email?: string
+  service_rating: number
+  comment?: string
+  created_at: string
 }
 
 export function ReviewsManager() {
@@ -38,6 +48,27 @@ export function ReviewsManager() {
 
   useEffect(() => {
     loadReviews()
+
+    const supabase = createBrowserClient()
+    const channel = supabase
+      .channel("admin_service_surveys_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "service_surveys",
+        },
+        () => {
+          console.log("[v0] Service survey changed in admin, reloading...")
+          loadReviews()
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   useEffect(() => {
@@ -47,8 +78,37 @@ export function ReviewsManager() {
   const loadReviews = async () => {
     setIsLoading(true)
     try {
-      const data = await getReviews()
-      setReviews(data)
+      const supabase = createBrowserClient()
+
+      const [reviewsResult, surveysResult] = await Promise.all([
+        getReviews(),
+        supabase.from("service_surveys").select("*").order("created_at", { ascending: false }),
+      ])
+
+      console.log("[v0] Admin - Reviews loaded:", reviewsResult.length)
+      console.log("[v0] Admin - Service surveys loaded:", surveysResult.data?.length || 0)
+
+      const surveysAsReviews: ReviewWithProduct[] = (surveysResult.data || []).map((survey: ServiceSurvey) => ({
+        id: survey.id,
+        customer_name: survey.customer_name,
+        customer_email: survey.customer_email,
+        rating: survey.service_rating,
+        comment: survey.comment || "",
+        created_at: survey.created_at,
+        updated_at: survey.created_at,
+        review_type: "pre_sale" as const,
+        approved: true,
+        verified_purchase: false,
+        is_offensive: false,
+      }))
+
+      const allReviews = [...reviewsResult, ...surveysAsReviews].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      )
+
+      console.log("[v0] Admin - Total reviews:", allReviews.length)
+
+      setReviews(allReviews)
     } catch (error) {
       console.error("Error loading reviews:", error)
     } finally {
