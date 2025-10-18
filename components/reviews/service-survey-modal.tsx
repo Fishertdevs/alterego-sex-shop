@@ -40,24 +40,44 @@ export function ServiceSurveyModal({ isOpen, onClose, onSuccess }: ServiceSurvey
     }
 
     try {
-      const { error: insertError } = await supabase.from("service_surveys").insert([
-        {
-          customer_name: formData.customer_name,
-          service_rating: formData.service_rating,
-          comment: formData.comment,
-        },
-      ])
+      console.log("[v0] ServiceSurveyModal - Intentando enviar encuesta:", formData)
 
-      if (insertError) throw insertError
+      const { data, error: insertError } = await supabase
+        .from("service_surveys")
+        .insert([
+          {
+            customer_name: formData.customer_name,
+            service_rating: formData.service_rating,
+            comment: formData.comment,
+          },
+        ])
+        .select()
 
+      console.log("[v0] ServiceSurveyModal - Resultado de inserción:", { data, error: insertError })
+
+      if (insertError) {
+        console.error("[v0] ServiceSurveyModal - Error de Supabase:", insertError)
+
+        if (insertError.code === "42501") {
+          throw new Error(
+            "Error de permisos: Por favor contacta al administrador para configurar las políticas de seguridad.",
+          )
+        } else if (insertError.message.includes("RLS")) {
+          throw new Error("Error de seguridad: Las políticas de la base de datos necesitan ser configuradas.")
+        } else {
+          throw insertError
+        }
+      }
+
+      console.log("[v0] ServiceSurveyModal - Encuesta enviada exitosamente")
       setSuccess(true)
       setTimeout(() => {
         onSuccess()
         handleClose()
       }, 2000)
-    } catch (err) {
-      console.error("Error submitting service survey:", err)
-      setError("Error al enviar la encuesta. Por favor intenta de nuevo.")
+    } catch (err: any) {
+      console.error("[v0] ServiceSurveyModal - Error al enviar encuesta:", err)
+      setError(err.message || "Error al enviar la encuesta. Por favor intenta de nuevo.")
     } finally {
       setLoading(false)
     }
