@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,12 +16,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Star, Trash2, Check, X, AlertTriangle, MessageSquare, ClipboardList } from "lucide-react"
+import { Star, Trash2, Check, X, AlertTriangle, MessageSquare } from "lucide-react"
 import { getReviews, deleteReview, updateReviewStatus } from "@/lib/supabase-storage"
 import type { SupabaseReview } from "@/lib/supabase-storage"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
-import { PostSaleSurveysManager } from "./post-sale-surveys-manager"
 
 type ReviewWithProduct = SupabaseReview & {
   product_name?: string
@@ -164,232 +162,215 @@ export function ReviewsManager() {
   }
 
   return (
-    <Tabs defaultValue="reviews" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="reviews" className="flex items-center gap-2">
-          <Star className="h-4 w-4" />
-          Reseñas de Productos
-        </TabsTrigger>
-        <TabsTrigger value="post-sale" className="flex items-center gap-2">
-          <ClipboardList className="h-4 w-4" />
-          Encuesta Pos Venta
-        </TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="reviews" className="space-y-6">
-        {/* Estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total</p>
-                  <p className="text-2xl font-bold">{stats.total}</p>
-                </div>
-                <MessageSquare className="h-8 w-8 text-muted-foreground opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Pendientes</p>
-                  <p className="text-2xl font-bold text-orange-500">{stats.pending}</p>
-                </div>
-                <AlertTriangle className="h-8 w-8 text-orange-500 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Aprobadas</p>
-                  <p className="text-2xl font-bold text-green-500">{stats.approved}</p>
-                </div>
-                <Check className="h-8 w-8 text-green-500 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Ofensivas</p>
-                  <p className="text-2xl font-bold text-destructive">{stats.offensive}</p>
-                </div>
-                <X className="h-8 w-8 text-destructive opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Tabla de reseñas */}
+    <div className="space-y-6">
+      {/* Estadísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader>
+          <CardContent className="pt-6">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Star className="h-5 w-5" />
-                Gestión de Reseñas
-              </CardTitle>
-              <Select value={filter} onValueChange={(value: any) => setFilter(value)}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filtrar por..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas ({stats.total})</SelectItem>
-                  <SelectItem value="pending">Pendientes ({stats.pending})</SelectItem>
-                  <SelectItem value="approved">Aprobadas ({stats.approved})</SelectItem>
-                  <SelectItem value="offensive">Ofensivas ({stats.offensive})</SelectItem>
-                </SelectContent>
-              </Select>
+              <div>
+                <p className="text-sm text-muted-foreground">Total</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
+              </div>
+              <MessageSquare className="h-8 w-8 text-muted-foreground opacity-50" />
             </div>
-          </CardHeader>
-          <CardContent>
-            {filteredReviews.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>No hay reseñas para mostrar</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Tipo/Producto</TableHead>
-                      <TableHead>Calificación</TableHead>
-                      <TableHead>Comentario</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredReviews.map((review) => (
-                      <TableRow key={review.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{review.customer_name}</p>
-                            {review.customer_email && (
-                              <p className="text-xs text-muted-foreground">{review.customer_email}</p>
-                            )}
-                            {review.verified_purchase && (
-                              <Badge variant="outline" className="mt-1 text-xs">
-                                Compra verificada
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            {review.review_type === "pre_sale" ? (
-                              <Badge variant="secondary" className="text-xs">
-                                Pre-venta (Servicio)
-                              </Badge>
-                            ) : (
-                              <Badge variant="default" className="text-xs bg-accent">
-                                Post-venta (Producto)
-                              </Badge>
-                            )}
-                            {review.product_name && <p className="text-sm">{review.product_name}</p>}
-                            {review.images && review.images.length > 0 && (
-                              <p className="text-xs text-muted-foreground">
-                                📷 {review.images.length} {review.images.length === 1 ? "imagen" : "imágenes"}
-                              </p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>{renderStars(review.rating)}</TableCell>
-                        <TableCell>
-                          <p className="text-sm max-w-xs truncate">{review.comment}</p>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(review)}</TableCell>
-                        <TableCell>
-                          <p className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(review.created_at), {
-                              addSuffix: true,
-                              locale: es,
-                            })}
-                          </p>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-end gap-2">
-                            {!review.approved && !review.is_offensive && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleApprove(review.id)}
-                                title="Aprobar"
-                              >
-                                <Check className="h-4 w-4 text-green-500" />
-                              </Button>
-                            )}
-                            {review.approved && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleReject(review.id)}
-                                title="Rechazar"
-                              >
-                                <X className="h-4 w-4 text-orange-500" />
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleMarkOffensive(review.id, !review.is_offensive)}
-                              title={review.is_offensive ? "Marcar como no ofensivo" : "Marcar como ofensivo"}
-                            >
-                              <AlertTriangle
-                                className={`h-4 w-4 ${review.is_offensive ? "text-destructive" : "text-muted-foreground"}`}
-                              />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setSelectedReviewId(review.id)
-                                setDeleteDialogOpen(true)
-                              }}
-                              title="Eliminar"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
           </CardContent>
         </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Pendientes</p>
+                <p className="text-2xl font-bold text-orange-500">{stats.pending}</p>
+              </div>
+              <AlertTriangle className="h-8 w-8 text-orange-500 opacity-50" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Aprobadas</p>
+                <p className="text-2xl font-bold text-green-500">{stats.approved}</p>
+              </div>
+              <Check className="h-8 w-8 text-green-500 opacity-50" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Ofensivas</p>
+                <p className="text-2xl font-bold text-destructive">{stats.offensive}</p>
+              </div>
+              <X className="h-8 w-8 text-destructive opacity-50" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* Diálogo de confirmación de eliminación */}
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esta acción no se puede deshacer. La reseña será eliminada permanentemente de la base de datos.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-                Eliminar
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </TabsContent>
+      {/* Tabla de reseñas */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Star className="h-5 w-5" />
+              Gestión de Reseñas
+            </CardTitle>
+            <Select value={filter} onValueChange={(value: any) => setFilter(value)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filtrar por..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas ({stats.total})</SelectItem>
+                <SelectItem value="pending">Pendientes ({stats.pending})</SelectItem>
+                <SelectItem value="approved">Aprobadas ({stats.approved})</SelectItem>
+                <SelectItem value="offensive">Ofensivas ({stats.offensive})</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {filteredReviews.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p>No hay reseñas para mostrar</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Tipo/Producto</TableHead>
+                    <TableHead>Calificación</TableHead>
+                    <TableHead>Comentario</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredReviews.map((review) => (
+                    <TableRow key={review.id}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{review.customer_name}</p>
+                          {review.customer_email && (
+                            <p className="text-xs text-muted-foreground">{review.customer_email}</p>
+                          )}
+                          {review.verified_purchase && (
+                            <Badge variant="outline" className="mt-1 text-xs">
+                              Compra verificada
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          {review.review_type === "pre_sale" ? (
+                            <Badge variant="secondary" className="text-xs">
+                              Pre-venta (Servicio)
+                            </Badge>
+                          ) : (
+                            <Badge variant="default" className="text-xs bg-accent">
+                              Post-venta (Producto)
+                            </Badge>
+                          )}
+                          {review.product_name && <p className="text-sm">{review.product_name}</p>}
+                          {review.images && review.images.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              📷 {review.images.length} {review.images.length === 1 ? "imagen" : "imágenes"}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{renderStars(review.rating)}</TableCell>
+                      <TableCell>
+                        <p className="text-sm max-w-xs truncate">{review.comment}</p>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(review)}</TableCell>
+                      <TableCell>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(review.created_at), {
+                            addSuffix: true,
+                            locale: es,
+                          })}
+                        </p>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-2">
+                          {!review.approved && !review.is_offensive && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleApprove(review.id)}
+                              title="Aprobar"
+                            >
+                              <Check className="h-4 w-4 text-green-500" />
+                            </Button>
+                          )}
+                          {review.approved && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleReject(review.id)}
+                              title="Rechazar"
+                            >
+                              <X className="h-4 w-4 text-orange-500" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleMarkOffensive(review.id, !review.is_offensive)}
+                            title={review.is_offensive ? "Marcar como no ofensivo" : "Marcar como ofensivo"}
+                          >
+                            <AlertTriangle
+                              className={`h-4 w-4 ${review.is_offensive ? "text-destructive" : "text-muted-foreground"}`}
+                            />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedReviewId(review.id)
+                              setDeleteDialogOpen(true)
+                            }}
+                            title="Eliminar"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      <TabsContent value="post-sale">
-        <PostSaleSurveysManager />
-      </TabsContent>
-    </Tabs>
+      {/* Diálogo de confirmación de eliminación */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. La reseña será eliminada permanentemente de la base de datos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   )
 }

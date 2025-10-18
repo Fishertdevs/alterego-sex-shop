@@ -13,30 +13,44 @@ ALTEREGO es una tienda en línea de productos íntimos de lujo, diseñada para o
 
 - **Catálogo de Productos**: Navegación intuitiva por categorías con filtros avanzados
 - **Carrito de Compras**: Sistema de carrito persistente con actualización en tiempo real
-- **Checkout Seguro**: Múltiples métodos de pago (PSE, tarjetas, Nequi, Daviplata)
+- **Checkout Seguro**: Múltiples métodos de pago (Nequi, Daviplata, Tarjeta, Transferencia)
 - **Envíos Discretos**: Información de envío y seguimiento de pedidos
 - **Reseñas y Calificaciones**: Sistema de reseñas verificadas con imágenes
-- **Encuestas de Satisfacción**: Encuestas de servicio y pos venta
-- **Wishlist**: Guardar productos favoritos para compras futuras
+- **Encuestas de Satisfacción**: Encuestas de servicio pre-venta
 - **Contacto WhatsApp**: Botón flotante para atención al cliente
 
 ### 🎛️ Panel de Administración
 
-**URL de Acceso**: `/admin`
+**URL de Acceso**: `/admin/login`
 
-El administrador accede directamente a esta URL y se autentica con su correo registrado en Supabase.
+El administrador accede a esta URL e ingresa su correo electrónico (`altergo102@gmail.com`) para autenticarse automáticamente.
 
 **Funcionalidades del Admin:**
 
 - **Dashboard**: Estadísticas de ventas, productos más vendidos, ingresos
-- **Gestión de Productos**: CRUD completo con soporte para imágenes y videos
-- **Gestión de Pedidos**: Seguimiento de pedidos, actualización de estados
-- **Gestión de Clientes**: Base de datos de clientes y historial de compras
-- **Reseñas**: Moderación de reseñas y encuestas
-- **Encuestas Pos Venta**: Generación de URLs únicas para encuestas de clientes
+- **Gestión de Productos**: CRUD completo con soporte para múltiples imágenes (máximo 5)
+- **Gestión de Pedidos y Clientes**: 
+  - Edición inline de información del cliente
+  - Actualización de estado de pedido (Pendiente, Confirmado, Descartado)
+  - Actualización de estado de envío (En Tránsito, Entregado, Devuelto, No)
+  - Confirmación de entrega con actualización de gráficos en tiempo real
+  - Exportar pedidos a Excel
+- **Gestión de Reseñas**: 
+  - Moderación de reseñas de productos
+  - Aprobar/rechazar reseñas
+  - Marcar reseñas como ofensivas
+  - Filtros por estado
+- **Encuestas de Servicio**: 
+  - Visualizar resultados de encuestas pre-venta
+  - Estadísticas de satisfacción
+  - Dashboard público con resultados
 - **Notificaciones**: Sistema de notificaciones en tiempo real
-- **Configuración**: Ajustes de la tienda, métodos de pago, envíos
-- **Análisis**: Gráficos de ventas, productos más vendidos, tendencias
+- **Configuración**: Ajustes de la tienda, horarios, redes sociales
+- **Análisis**: 
+  - Gráficos de ventas por mes
+  - Gráficos de pedidos por estado
+  - Gráficos de métodos de pago
+  - Exportar gráficos a Excel
 
 ## 🛠️ Tecnologías
 
@@ -50,11 +64,10 @@ El administrador accede directamente a esta URL y se autentica con su correo reg
 ### Backend
 - **Supabase**: Base de datos PostgreSQL y autenticación
 - **Next.js API Routes**: Endpoints para checkout y pagos
-- **Vercel Blob**: Almacenamiento de imágenes y videos
+- **Vercel Blob**: Almacenamiento de imágenes
 
 ### Integraciones
-- **Pasarelas de Pago**: PSE, tarjetas de crédito/débito
-- **WhatsApp Business**: Atención al cliente
+- **WhatsApp Business**: Atención al cliente y confirmación de pedidos
 - **Google Search Console**: SEO y indexación
 
 ## 📦 Estructura del Proyecto
@@ -63,14 +76,15 @@ El administrador accede directamente a esta URL y se autentica con su correo reg
 alterego-sex-shop/
 ├── app/                          # Páginas y rutas de Next.js
 │   ├── admin/                    # Panel de administración
+│   │   ├── login/                # Login del administrador
+│   │   └── page.tsx              # Dashboard principal
 │   ├── api/                      # API routes (checkout, pagos)
 │   ├── checkout/                 # Proceso de compra
-│   ├── producto/[id]/            # Páginas de productos
+│   ├── dashboard/                # Dashboard público de encuestas
 │   ├── productos/                # Catálogo de productos
 │   └── ...                       # Otras páginas
 ├── components/                   # Componentes React
 │   ├── admin/                    # Componentes del admin
-│   ├── auth/                     # Autenticación
 │   ├── cart/                     # Carrito de compras
 │   ├── checkout/                 # Proceso de checkout
 │   ├── products/                 # Productos
@@ -83,7 +97,6 @@ alterego-sex-shop/
 │   └── ...                       # Otras utilidades
 ├── scripts/                      # Scripts SQL para Supabase
 ├── public/                       # Archivos estáticos
-│   ├── images/                   # Imágenes de productos
 │   ├── google8d4dfb8159ece8ac.html  # Verificación Google
 │   └── robots.txt                # SEO
 └── ...
@@ -93,15 +106,13 @@ alterego-sex-shop/
 
 ### Tablas Principales
 
-1. **products**: Catálogo de productos
-2. **orders**: Pedidos de clientes
-3. **reviews**: Reseñas de productos
-4. **service_surveys**: Encuestas de servicio
-5. **post_sale_surveys**: Encuestas pos venta
-6. **admins**: Administradores del sistema
-7. **notifications**: Notificaciones del sistema
-8. **store_settings**: Configuración de la tienda
-9. **survey_tokens**: Tokens para encuestas
+1. **products**: Catálogo de productos con imágenes y categorías
+2. **orders**: Pedidos de clientes con información de envío
+3. **reviews**: Reseñas de productos con calificaciones
+4. **service_surveys**: Encuestas de servicio pre-venta
+5. **admins**: Administradores del sistema
+6. **notifications**: Notificaciones del sistema en tiempo real
+7. **store_settings**: Configuración de la tienda
 
 ## 🚀 Deployment
 
@@ -140,18 +151,20 @@ BLOB_READ_WRITE_TOKEN=
 
 ### URL del Panel de Administración
 
-**`/admin`**
+**`/admin/login`**
 
-Ejemplo: `https://alterego-store.com.co/admin`
+Ejemplo: `https://alterego-store.com.co/admin/login`
 
 ### Proceso de Autenticación
 
-1. El administrador accede directamente a `/admin`
-2. Ingresa su correo electrónico registrado en Supabase
-3. Supabase envía un enlace de autenticación al correo
-4. El administrador hace clic en el enlace y es redirigido al dashboard
+1. El administrador accede a `/admin/login`
+2. Ingresa su correo electrónico: `altergo102@gmail.com`
+3. Es autenticado automáticamente sin necesidad de contraseña
+4. Es redirigido al dashboard administrativo en `/admin`
 
 **Nota**: El correo del administrador debe estar registrado en la tabla `admins` de Supabase.
+
+Para más detalles, consulta: **`ADMIN_ACCESS.md`**
 
 ## 📊 Google Search Console
 
@@ -175,26 +188,28 @@ Consulta la lista completa de verificación en: **`TESTING_CHECKLIST.md`**
 
 - ✅ Navegación y catálogo de productos
 - ✅ Carrito de compras y checkout
-- ✅ Métodos de pago (PSE, tarjetas)
-- ✅ Sistema de reseñas
-- ✅ Encuestas de servicio y pos venta
+- ✅ Métodos de pago (Nequi, Daviplata, Tarjeta, Transferencia)
+- ✅ Sistema de reseñas con imágenes
+- ✅ Encuestas de servicio pre-venta
 - ✅ Panel de administración completo
 - ✅ Notificaciones en tiempo real
+- ✅ Exportación a Excel (pedidos y gráficos)
 - ✅ Responsive design (móvil, tablet, desktop)
 
 ## 📱 Características Adicionales
 
 ### Seguridad
 - Autenticación con Supabase
-- Protección de rutas administrativas
+- Protección de rutas administrativas con middleware
 - Validación de formularios
-- Sanitización de inputs
+- Row Level Security (RLS) en Supabase
 
 ### Performance
 - Optimización de imágenes con Next.js Image
 - Lazy loading de componentes
 - Caching de datos con SWR
 - Code splitting automático
+- Server-side rendering donde es apropiado
 
 ### UX/UI
 - Diseño responsive
@@ -208,8 +223,8 @@ Consulta la lista completa de verificación en: **`TESTING_CHECKLIST.md`**
 ### Desarrollo en v0.app
 
 1. Continúa desarrollando en: [https://v0.app/chat/projects/dVK1YfzWJAx](https://v0.app/chat/projects/dVK1YfzWJAx)
-2. Los cambios se sincronizan automáticamente con este repositorio
-3. Vercel despliega automáticamente los cambios
+2. Los cambios se sincronizan automáticamente con GitHub
+3. Vercel despliega automáticamente los cambios desde GitHub
 
 ### Deploy Manual
 
@@ -229,18 +244,29 @@ npm run build
 npm start
 \`\`\`
 
+## 📚 Documentación Adicional
+
+- **`ADMIN_ACCESS.md`**: Guía completa de acceso administrativo
+- **`DOMAIN_SETUP.md`**: Configuración de dominio personalizado en Vercel
+- **`GOOGLE_SEARCH_CONSOLE_SETUP.md`**: Configuración de Google Search Console
+- **`TESTING_CHECKLIST.md`**: Lista de verificación de funcionalidades
+- **`PROJECT_COMPLETION.md`**: Resumen del proyecto completado
+
 ## 📞 Soporte
 
 Para soporte técnico o consultas:
 
-- **Email**: [Tu email de contacto]
-- **WhatsApp**: [Tu número de WhatsApp]
-- **GitHub Issues**: [Link al repositorio]
+- **Email**: altergo102@gmail.com
+- **WhatsApp**: Botón flotante en la tienda
 
-## 📄 Licencia
+## 📄 Estado del Proyecto
 
-Este proyecto es propiedad de ALTEREGO. Todos los derechos reservados.
+**✅ PROYECTO COMPLETADO**
+
+Fecha de finalización: 18 de Octubre, 2025
+
+Todas las funcionalidades han sido implementadas y probadas. El proyecto está listo para producción.
 
 ---
 
-**Desarrollado con ❤️ usando [v0.app](https://v0.app)**
+**Desarrollado con ❤️ usando [v0.app](https://v0.app) by Vercel**
