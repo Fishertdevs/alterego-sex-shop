@@ -1,0 +1,32 @@
+# Robots.txt para ALTEREGO Sex Shop
+# https://alterego-store.com.co
+
+User-agent: *
+Allow: /
+Allow: /productos
+Allow: /productos/*
+Allow: /producto/*
+Allow: /quienes-somos
+Allow: /contacto
+Allow: /terminos-condiciones
+Allow: /politicas-privacidad
+Allow: /politicas-cookies
+Allow: /devolucion-reembolso
+
+# Bloquear páginas privadas y administrativas
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /dashboard
+Disallow: /dashboard/*
+Disallow: /checkout
+Disallow: /order-confirmation
+Disallow: /encuesta/
+Disallow: /encuesta-posventa/
+Disallow: /api/
+
+# Bloquear archivos y directorios del sistema
+Disallow: /_next/
+Disallow: /scripts/
+
+# Sitemap
+Sitemap: https://alterego-store.com.co/sitemap.xml

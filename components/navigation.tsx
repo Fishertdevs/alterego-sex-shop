@@ -4,18 +4,16 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Menu, X, ShoppingCart, User, Sun, Moon } from "lucide-react"
+import { Menu, X, ShoppingCart, Sun, Moon } from "lucide-react"
 import { useCart } from "@/contexts/cart-context"
 import { useAuth } from "@/contexts/auth-context"
 import { useTheme } from "@/contexts/theme-context"
-import { LoginModal } from "@/components/auth/login-modal"
 import { CartDrawer } from "@/components/cart/cart-drawer"
 import { Logo } from "@/components/logo"
 import { SecurityPaymentBar } from "@/components/security-payment-bar"
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
-  const [showLoginModal, setShowLoginModal] = useState(false)
   const [showCartDrawer, setShowCartDrawer] = useState(false)
   const { itemCount } = useCart()
   const { user, logout } = useAuth()
@@ -124,17 +122,7 @@ export function Navigation() {
                     Cerrar Sesión
                   </Button>
                 </div>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowLoginModal(true)}
-                  className="text-foreground hover:text-accent hover:bg-accent/10 relative z-10"
-                  title="Acceso administrativo"
-                >
-                  <User className="h-5 w-5" />
-                </Button>
-              )}
+              ) : null}
 
               {/* Mobile menu button */}
               <div className="md:hidden">
@@ -175,7 +163,6 @@ export function Navigation() {
       </div>
 
       {/* Modals */}
-      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
       <CartDrawer isOpen={showCartDrawer} onClose={() => setShowCartDrawer(false)} />
     </>
   )
