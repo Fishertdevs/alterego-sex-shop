@@ -11,9 +11,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Users, Search, Plus, Eye, Package, Phone, MapPin, CreditCard, Truck, Trash2 } from "lucide-react"
+import {
+  Users,
+  Search,
+  Plus,
+  Eye,
+  Package,
+  Phone,
+  MapPin,
+  CreditCard,
+  Truck,
+  Trash2,
+  Edit,
+  Save,
+  X,
+  FileDown,
+} from "lucide-react"
 import { colombiaDepartments, shippingCompanies, paymentMethods, shippingTypes } from "@/lib/colombia-data"
+import { colombiaBanks } from "@/lib/colombia-banks"
 import { createBrowserClient } from "@/lib/supabase/client"
+// @ts-ignore
+import * as XLSX from "xlsx"
 
 interface Order {
   id: string
@@ -37,6 +55,7 @@ interface Order {
   created_at: string
   updated_at: string
   notes?: string
+  bank?: string // Added bank field to the interface
 }
 
 export function OrdersCustomersManager() {
@@ -49,15 +68,21 @@ export function OrdersCustomersManager() {
   const [selectedDepartment, setSelectedDepartment] = useState("")
   const [municipalities, setMunicipalities] = useState<Array<{ name: string; code: string }>>([])
 
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null)
+  const [editingOrder, setEditingOrder] = useState<Partial<Order & { bank?: string }>>({}) // Include bank in editingOrder type
+  const [editingDepartment, setEditingDepartment] = useState("")
+  const [editingMunicipalities, setEditingMunicipalities] = useState<Array<{ name: string; code: string }>>([])
+
   const [newOrder, setNewOrder] = useState({
     customer_name: "",
     customer_phone: "",
     customer_address: "",
     customer_department: "",
     customer_municipality: "",
-    customer_email: "",
+    customer_email: "", // Kept email in newOrder state for consistency with original, though removed from details
     total_product_cost: "",
     payment_method: "",
+    bank: "", // Added bank to newOrder state
     shipping_type: "",
     shipping_cost: "",
     shipping_company: "",
@@ -100,6 +125,16 @@ export function OrdersCustomersManager() {
     }
   }, [selectedDepartment])
 
+  // useEffect para editar departamentos y municipios
+  useEffect(() => {
+    if (editingDepartment) {
+      const dept = colombiaDepartments.find((d) => d.name === editingDepartment)
+      setEditingMunicipalities(dept?.municipalities || [])
+    } else {
+      setEditingMunicipalities([])
+    }
+  }, [editingDepartment])
+
   const loadOrders = async () => {
     const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false })
 
@@ -134,6 +169,11 @@ export function OrdersCustomersManager() {
       return
     }
 
+    if ((newOrder.payment_method === "tarjeta" || newOrder.payment_method === "banco") && !newOrder.bank) {
+      alert("Por favor selecciona el banco")
+      return
+    }
+
     const { error } = await supabase.from("orders").insert([
       {
         customer_name: newOrder.customer_name,
@@ -144,6 +184,7 @@ export function OrdersCustomersManager() {
         customer_email: newOrder.customer_email,
         total_product_cost: parseFormattedNumber(newOrder.total_product_cost),
         payment_method: newOrder.payment_method,
+        bank: newOrder.bank || null, // Insert bank value
         shipping_type: newOrder.shipping_type,
         shipping_cost: parseFormattedNumber(newOrder.shipping_cost),
         shipping_company: newOrder.shipping_company,
@@ -325,12 +366,126 @@ export function OrdersCustomersManager() {
       customer_email: "",
       total_product_cost: "",
       payment_method: "",
+      bank: "", // Reset bank field
       shipping_type: "",
       shipping_cost: "",
       shipping_company: "",
       notes: "",
     })
     setSelectedDepartment("")
+  }
+
+  const handleStartEdit = (order: Order) => {
+    setEditingOrderId(order.id)
+    setEditingOrder({
+      customer_name: order.customer_name,
+      customer_phone: order.customer_phone,
+      customer_address: order.customer_address,
+      customer_department: order.customer_department,
+      customer_municipality: order.customer_municipality,
+      payment_method: order.payment_method,
+      bank: (order as any).bank || "", // Initialize bank from order data
+      order_status: order.order_status,
+    })
+    setEditingDepartment(order.customer_department)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingOrderId) return
+
+    if ((editingOrder.payment_method === "tarjeta" || editingOrder.payment_method === "banco") && !editingOrder.bank) {
+      alert("Por favor selecciona el banco")
+      return
+    }
+
+    const { error } = await supabase
+      .from("orders")
+      .update({
+        customer_name: editingOrder.customer_name,
+        customer_phone: editingOrder.customer_phone,
+        customer_address: editingOrder.customer_address,
+        customer_department: editingOrder.customer_department,
+        customer_municipality: editingOrder.customer_municipality,
+        payment_method: editingOrder.payment_method,
+        bank: editingOrder.bank || null, // Update bank value
+        order_status: editingOrder.order_status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", editingOrderId)
+
+    if (error) {
+      console.error("Error updating order:", error)
+      alert("Error al actualizar el pedido")
+      return
+    }
+
+    await loadOrders()
+    setEditingOrderId(null)
+    setEditingOrder({})
+    setEditingDepartment("")
+  }
+
+  const handleCancelEdit = () => {
+    setEditingOrderId(null)
+    setEditingOrder({})
+    setEditingDepartment("")
+  }
+
+  const handleExportToExcel = () => {
+    try {
+      console.log("[v0] Starting Excel export...")
+
+      const exportData = filteredOrders.map((order) => ({
+        Cliente: order.customer_name,
+        Teléfono: order.customer_phone,
+        Dirección: order.customer_address,
+        Municipio: order.customer_municipality,
+        Departamento: order.customer_department,
+        "Costo Producto": order.total_product_cost,
+        "Costo Envío": order.shipping_cost,
+        Total: order.total_product_cost + order.shipping_cost,
+        "Método de Pago": paymentMethods.find((m) => m.value === order.payment_method)?.label || order.payment_method,
+        Banco: (order as any).bank
+          ? colombiaBanks.find((b) => b.value === (order as any).bank)?.label || (order as any).bank
+          : "N/A",
+        Estado: getStatusLabel(order.order_status),
+        Entregado: order.delivered ? "Sí" : "No",
+        "Fecha de Creación": formatDate(order.created_at),
+        "Fecha de Entrega": order.delivered_at ? formatDate(order.delivered_at) : "N/A",
+      }))
+
+      console.log("[v0] Export data prepared:", exportData.length, "rows")
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Pedidos")
+
+      console.log("[v0] Workbook created")
+
+      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" })
+
+      console.log("[v0] Excel buffer generated")
+
+      const blob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `pedidos_${new Date().toISOString().split("T")[0]}.xlsx`
+
+      console.log("[v0] Download link created")
+
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      console.log("[v0] Excel export completed successfully")
+    } catch (error) {
+      console.error("[v0] Error exporting to Excel:", error)
+      alert("Error al exportar a Excel. Por favor intenta de nuevo.")
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -388,6 +543,14 @@ export function OrdersCustomersManager() {
             </CardTitle>
             <div className="flex gap-2 items-center">
               <Badge variant="secondary">{orders.length} pedidos totales</Badge>
+              <Button
+                variant="outline"
+                onClick={handleExportToExcel}
+                className="flex items-center gap-2 bg-transparent"
+              >
+                <FileDown className="h-4 w-4" />
+                Exportar a Excel
+              </Button>
               <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="bg-accent hover:bg-accent/90">
@@ -504,7 +667,9 @@ export function OrdersCustomersManager() {
                           <Label htmlFor="payment_method">Método de Pago *</Label>
                           <Select
                             value={newOrder.payment_method}
-                            onValueChange={(value) => setNewOrder((prev) => ({ ...prev, payment_method: value }))}
+                            onValueChange={(value) =>
+                              setNewOrder((prev) => ({ ...prev, payment_method: value, bank: "" }))
+                            } // Reset bank when payment method changes
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Seleccionar método" />
@@ -518,6 +683,26 @@ export function OrdersCustomersManager() {
                             </SelectContent>
                           </Select>
                         </div>
+                        {(newOrder.payment_method === "tarjeta" || newOrder.payment_method === "banco") && (
+                          <div>
+                            <Label htmlFor="bank">Banco *</Label>
+                            <Select
+                              value={newOrder.bank}
+                              onValueChange={(value) => setNewOrder((prev) => ({ ...prev, bank: value }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleccionar banco" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {colombiaBanks.map((bank) => (
+                                  <SelectItem key={bank.value} value={bank.value}>
+                                    {bank.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                         <div>
                           <Label htmlFor="total_product_cost">Costo del Producto *</Label>
                           <Input
@@ -662,64 +847,255 @@ export function OrdersCustomersManager() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredOrders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.customer_name}</TableCell>
-                      <TableCell className="text-sm">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-muted-foreground" />
-                          <span>
-                            {order.customer_municipality}, {order.customer_department}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Phone className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-sm">{order.customer_phone}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-semibold">
-                        {formatCurrency(order.total_product_cost + order.shipping_cost)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {paymentMethods.find((m) => m.value === order.payment_method)?.label || order.payment_method}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusColor(order.order_status)}>{getStatusLabel(order.order_status)}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Checkbox
-                          checked={order.delivered}
-                          onCheckedChange={(checked) => handleUpdateDeliveryStatus(order.id, checked as boolean)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedOrder(order)
-                            setIsDetailDialogOpen(true)
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteOrder(order.id)}
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredOrders.map((order) => {
+                    const isEditing = editingOrderId === order.id
+
+                    return (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">
+                          {isEditing ? (
+                            <Input
+                              value={editingOrder.customer_name || ""}
+                              onChange={(e) => setEditingOrder((prev) => ({ ...prev, customer_name: e.target.value }))}
+                              className="w-full"
+                              placeholder="Nombre del cliente"
+                            />
+                          ) : (
+                            order.customer_name
+                          )}
+                        </TableCell>
+
+                        <TableCell className="text-sm">
+                          {isEditing ? (
+                            <div className="space-y-2 min-w-[200px]">
+                              <Input
+                                value={editingOrder.customer_address || ""}
+                                onChange={(e) =>
+                                  setEditingOrder((prev) => ({ ...prev, customer_address: e.target.value }))
+                                }
+                                placeholder="Dirección"
+                                className="text-xs"
+                              />
+                              <Select
+                                value={editingDepartment}
+                                onValueChange={(value) => {
+                                  setEditingDepartment(value)
+                                  setEditingOrder((prev) => ({
+                                    ...prev,
+                                    customer_department: value,
+                                    customer_municipality: "",
+                                  }))
+                                }}
+                              >
+                                <SelectTrigger className="text-xs">
+                                  <SelectValue placeholder="Departamento" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {colombiaDepartments.map((dept) => (
+                                    <SelectItem key={dept.code} value={dept.name}>
+                                      {dept.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Select
+                                value={editingOrder.customer_municipality || ""}
+                                onValueChange={(value) =>
+                                  setEditingOrder((prev) => ({ ...prev, customer_municipality: value }))
+                                }
+                                disabled={!editingDepartment}
+                              >
+                                <SelectTrigger className="text-xs">
+                                  <SelectValue placeholder="Municipio" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {editingMunicipalities.map((mun) => (
+                                    <SelectItem key={mun.code} value={mun.name}>
+                                      {mun.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3 text-muted-foreground" />
+                              <span>
+                                {order.customer_municipality}, {order.customer_department}
+                              </span>
+                            </div>
+                          )}
+                        </TableCell>
+
+                        <TableCell>
+                          {isEditing ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-muted-foreground">+57</span>
+                              <Input
+                                value={editingOrder.customer_phone?.replace("+57", "").trim() || ""}
+                                onChange={(e) => {
+                                  const phone = e.target.value.replace(/\D/g, "")
+                                  setEditingOrder((prev) => ({ ...prev, customer_phone: `+57 ${phone}` }))
+                                }}
+                                placeholder="300 123 4567"
+                                className="w-full text-xs"
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <Phone className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-sm">{order.customer_phone}</span>
+                            </div>
+                          )}
+                        </TableCell>
+
+                        <TableCell className="font-semibold">
+                          {formatCurrency(order.total_product_cost + order.shipping_cost)}
+                        </TableCell>
+
+                        <TableCell>
+                          {isEditing ? (
+                            <div className="space-y-2 min-w-[150px]">
+                              {" "}
+                              {/* Adjusted min-width */}
+                              <Select
+                                value={editingOrder.payment_method || ""}
+                                onValueChange={
+                                  (value) => setEditingOrder((prev) => ({ ...prev, payment_method: value, bank: "" })) // Reset bank on change
+                                }
+                              >
+                                <SelectTrigger className="text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {paymentMethods.map((method) => (
+                                    <SelectItem key={method.value} value={method.value}>
+                                      {method.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {(editingOrder.payment_method === "tarjeta" ||
+                                editingOrder.payment_method === "banco") && (
+                                <Select
+                                  value={editingOrder.bank || ""}
+                                  onValueChange={(value) => setEditingOrder((prev) => ({ ...prev, bank: value }))}
+                                >
+                                  <SelectTrigger className="text-xs">
+                                    <SelectValue placeholder="Seleccionar banco" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {colombiaBanks.map((bank) => (
+                                      <SelectItem key={bank.value} value={bank.value}>
+                                        {bank.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <Badge variant="outline" className="text-xs">
+                                {paymentMethods.find((m) => m.value === order.payment_method)?.label ||
+                                  order.payment_method}
+                              </Badge>
+                              {(order as any).bank && (
+                                <div className="text-xs text-muted-foreground">
+                                  {colombiaBanks.find((b) => b.value === (order as any).bank)?.label ||
+                                    (order as any).bank}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </TableCell>
+
+                        <TableCell>
+                          {isEditing ? (
+                            <Select
+                              value={editingOrder.order_status || ""}
+                              onValueChange={(value) => setEditingOrder((prev) => ({ ...prev, order_status: value }))}
+                            >
+                              <SelectTrigger className="text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pending">Pendiente</SelectItem>
+                                <SelectItem value="confirmed">Confirmado</SelectItem>
+                                <SelectItem value="shipped">Enviado</SelectItem>
+                                <SelectItem value="delivered">Entregado</SelectItem>
+                                <SelectItem value="cancelled">Descartado</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Badge variant={getStatusColor(order.order_status)}>
+                              {getStatusLabel(order.order_status)}
+                            </Badge>
+                          )}
+                        </TableCell>
+
+                        <TableCell>
+                          <Checkbox
+                            checked={order.delivered}
+                            onCheckedChange={(checked) => handleUpdateDeliveryStatus(order.id, checked as boolean)}
+                            disabled={isEditing}
+                          />
+                        </TableCell>
+
+                        <TableCell>
+                          {isEditing ? (
+                            <div className="flex gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleSaveEdit}
+                                className="h-8 w-8 p-0 bg-transparent"
+                              >
+                                <Save className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={handleCancelEdit} className="h-8 w-8 p-0">
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleStartEdit(order)}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedOrder(order)
+                                  setIsDetailDialogOpen(true)
+                                }}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteOrder(order.id)}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            disabled={isEditing}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -748,11 +1124,9 @@ export function OrdersCustomersManager() {
                     <p>
                       <span className="text-muted-foreground">Teléfono:</span> {selectedOrder.customer_phone}
                     </p>
-                    {selectedOrder.customer_email && (
-                      <p>
-                        <span className="text-muted-foreground">Email:</span> {selectedOrder.customer_email}
-                      </p>
-                    )}
+                    {/* <p>
+                      <span className="text-muted-foreground">Email:</span> {selectedOrder.customer_email}
+                    </p> */}
                     <p>
                       <span className="text-muted-foreground">Dirección:</span> {selectedOrder.customer_address}
                     </p>
@@ -783,6 +1157,13 @@ export function OrdersCustomersManager() {
                       {paymentMethods.find((m) => m.value === selectedOrder.payment_method)?.label ||
                         selectedOrder.payment_method}
                     </p>
+                    {(selectedOrder as any).bank && (
+                      <p>
+                        <span className="text-muted-foreground">Banco:</span>{" "}
+                        {colombiaBanks.find((b) => b.value === (selectedOrder as any).bank)?.label ||
+                          (selectedOrder as any).bank}
+                      </p>
+                    )}
                     <p>
                       <span className="text-muted-foreground">Tipo de envío:</span>{" "}
                       {shippingTypes.find((t) => t.value === selectedOrder.shipping_type)?.label ||

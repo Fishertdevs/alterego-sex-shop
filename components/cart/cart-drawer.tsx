@@ -113,7 +113,8 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         console.log("[v0] Redirecting to WhatsApp:", cleanNumber)
         window.open(`https://wa.me/${cleanNumber}?text=${message}`, "_blank", "noopener,noreferrer")
       } else {
-        const instagramUrl = settings?.instagram_url || "https://www.instagram.com/alterego"
+        const instagramUrl =
+          settings?.instagram_url || "https://www.instagram.com/alterego.shop1?igsh=MTdrcnY5bjI0czFobg=="
         console.log("[v0] Redirecting to Instagram:", instagramUrl)
         window.open(instagramUrl, "_blank", "noopener,noreferrer")
       }

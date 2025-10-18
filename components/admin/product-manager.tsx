@@ -19,6 +19,7 @@ import { categoriesData } from "@/data/products"
 import { put } from "@vercel/blob"
 import { createProduct, getProducts, convertSupabaseToAdmin } from "@/lib/supabase-storage"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { ProductPreview } from "./product-preview"
 
 const categoryOptions = [
   { key: "juguetes-intimos", label: "Juguetes Íntimos" },
@@ -80,8 +81,19 @@ export function ProductManager() {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
 
+    const remainingSlots = 5 - newProduct.images.length
+    if (remainingSlots <= 0) {
+      alert("Solo puedes agregar un máximo de 5 imágenes por producto")
+      return
+    }
+
+    const filesToProcess = files.slice(0, remainingSlots)
+    if (files.length > remainingSlots) {
+      alert(`Solo se agregarán ${remainingSlots} imagen(es) para no exceder el límite de 5`)
+    }
+
     const newImages: string[] = []
-    for (const file of files) {
+    for (const file of filesToProcess) {
       try {
         const base64 = await convertImageToBase64(file)
         newImages.push(base64)
@@ -335,249 +347,276 @@ export function ProductManager() {
                   Agregar Producto
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Agregar Nuevo Producto</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="name">Nombre del Producto *</Label>
-                    <Input
-                      id="name"
-                      value={newProduct.name}
-                      onChange={(e) => setNewProduct((prev) => ({ ...prev, name: e.target.value }))}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Left Column: Form */}
+                  <div className="space-y-4">
                     <div>
-                      <Label htmlFor="price">Precio (COP) *</Label>
+                      <Label htmlFor="name">Nombre del Producto *</Label>
                       <Input
-                        id="price"
-                        type="text"
-                        placeholder="Ej: 150.000"
-                        value={newProduct.price}
-                        onChange={(e) => {
-                          const formatted = formatNumber(e.target.value)
-                          setNewProduct((prev) => ({ ...prev, price: formatted }))
-                        }}
+                        id="name"
+                        value={newProduct.name}
+                        onChange={(e) => setNewProduct((prev) => ({ ...prev, name: e.target.value }))}
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="stock">Stock *</Label>
-                      <Input
-                        id="stock"
-                        type="text"
-                        placeholder="Ej: 10"
-                        value={newProduct.stock}
-                        onChange={(e) => {
-                          const formatted = formatNumber(e.target.value)
-                          setNewProduct((prev) => ({ ...prev, stock: formatted }))
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="discount">Descuento (%)</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id="discount"
-                        type="number"
-                        min="0"
-                        max="100"
-                        placeholder="Ej: 20"
-                        value={newProduct.discount}
-                        onChange={(e) => setNewProduct((prev) => ({ ...prev, discount: e.target.value }))}
-                      />
-                      <Percent className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    {newProduct.price && newProduct.discount && Number.parseFloat(newProduct.discount) > 0 && (
-                      <div className="mt-2 p-3 bg-muted rounded-lg">
-                        <p className="text-sm text-muted-foreground">Precio original</p>
-                        <p className="text-sm line-through">
-                          ${parseFormattedNumber(newProduct.price).toLocaleString("es-CO")} COP
-                        </p>
-                        <p className="text-sm text-muted-foreground mt-1">Precio con descuento</p>
-                        <p className="text-lg font-bold text-accent">
-                          $
-                          {(
-                            parseFormattedNumber(newProduct.price) *
-                            (1 - Number.parseFloat(newProduct.discount) / 100)
-                          ).toLocaleString("es-CO")}{" "}
-                          COP
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Ahorro: $
-                          {(
-                            parseFormattedNumber(newProduct.price) *
-                            (Number.parseFloat(newProduct.discount) / 100)
-                          ).toLocaleString("es-CO")}{" "}
-                          COP
-                        </p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="price">Precio (COP) *</Label>
+                        <Input
+                          id="price"
+                          type="text"
+                          placeholder="Ej: 150.000"
+                          value={newProduct.price}
+                          onChange={(e) => {
+                            const formatted = formatNumber(e.target.value)
+                            setNewProduct((prev) => ({ ...prev, price: formatted }))
+                          }}
+                        />
                       </div>
-                    )}
-                  </div>
+                      <div>
+                        <Label htmlFor="stock">Stock *</Label>
+                        <Input
+                          id="stock"
+                          type="text"
+                          placeholder="Ej: 10"
+                          value={newProduct.stock}
+                          onChange={(e) => {
+                            const formatted = formatNumber(e.target.value)
+                            setNewProduct((prev) => ({ ...prev, stock: formatted }))
+                          }}
+                        />
+                      </div>
+                    </div>
 
-                  <div>
-                    <Label htmlFor="category">Categoría *</Label>
-                    <Select
-                      value={newProduct.category}
-                      onValueChange={(value) =>
-                        setNewProduct((prev) => ({ ...prev, category: value, subcategory: "" }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar categoría" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categoryOptions.map((category) => (
-                          <SelectItem key={category.key} value={category.key}>
-                            {category.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {newProduct.category && (
                     <div>
-                      <Label htmlFor="subcategory">Subcategoría</Label>
+                      <Label htmlFor="discount">Descuento (%)</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="discount"
+                          type="number"
+                          min="0"
+                          max="100"
+                          placeholder="Ej: 20"
+                          value={newProduct.discount}
+                          onChange={(e) => setNewProduct((prev) => ({ ...prev, discount: e.target.value }))}
+                        />
+                        <Percent className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      {newProduct.price && newProduct.discount && Number.parseFloat(newProduct.discount) > 0 && (
+                        <div className="mt-2 p-3 bg-muted rounded-lg">
+                          <p className="text-sm text-muted-foreground">Precio original</p>
+                          <p className="text-sm line-through">
+                            ${parseFormattedNumber(newProduct.price).toLocaleString("es-CO")} COP
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">Precio con descuento</p>
+                          <p className="text-lg font-bold text-accent">
+                            $
+                            {(
+                              parseFormattedNumber(newProduct.price) *
+                              (1 - Number.parseFloat(newProduct.discount) / 100)
+                            ).toLocaleString("es-CO")}{" "}
+                            COP
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Ahorro: $
+                            {(
+                              parseFormattedNumber(newProduct.price) *
+                              (Number.parseFloat(newProduct.discount) / 100)
+                            ).toLocaleString("es-CO")}{" "}
+                            COP
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="category">Categoría *</Label>
                       <Select
-                        value={newProduct.subcategory}
-                        onValueChange={(value) => setNewProduct((prev) => ({ ...prev, subcategory: value }))}
+                        value={newProduct.category}
+                        onValueChange={(value) =>
+                          setNewProduct((prev) => ({ ...prev, category: value, subcategory: "" }))
+                        }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar subcategoría" />
+                          <SelectValue placeholder="Seleccionar categoría" />
                         </SelectTrigger>
                         <SelectContent>
-                          {getSubcategories(newProduct.category).map((subcategory) => (
-                            <SelectItem key={subcategory} value={subcategory}>
-                              {subcategory}
+                          {categoryOptions.map((category) => (
+                            <SelectItem key={category.key} value={category.key}>
+                              {category.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                  )}
 
-                  <div>
-                    <Label htmlFor="description">Descripción</Label>
-                    <Textarea
-                      id="description"
-                      value={newProduct.description}
-                      onChange={(e) => setNewProduct((prev) => ({ ...prev, description: e.target.value }))}
-                      rows={3}
+                    {newProduct.category && (
+                      <div>
+                        <Label htmlFor="subcategory">Subcategoría</Label>
+                        <Select
+                          value={newProduct.subcategory}
+                          onValueChange={(value) => setNewProduct((prev) => ({ ...prev, subcategory: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar subcategoría" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getSubcategories(newProduct.category).map((subcategory) => (
+                              <SelectItem key={subcategory} value={subcategory}>
+                                {subcategory}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    <div>
+                      <Label htmlFor="description">Descripción</Label>
+                      <Textarea
+                        id="description"
+                        value={newProduct.description}
+                        onChange={(e) => setNewProduct((prev) => ({ ...prev, description: e.target.value }))}
+                        rows={3}
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Imágenes del Producto</Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Máximo 5 imágenes ({newProduct.images.length}/5)
+                      </p>
+                      <div className="mt-2 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handleImageUpload}
+                            className="flex-1"
+                            id="image-upload"
+                            disabled={newProduct.images.length >= 5}
+                          />
+                          <Label
+                            htmlFor="image-upload"
+                            className={`cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 ${
+                              newProduct.images.length >= 5 ? "opacity-50 cursor-not-allowed" : ""
+                            }`}
+                          >
+                            <Upload className="h-4 w-4 mr-2" />
+                            Subir Imágenes
+                          </Label>
+                        </div>
+
+                        {newProduct.images.length > 0 && (
+                          <div className="grid grid-cols-3 gap-4">
+                            {newProduct.images.map((image, index) => (
+                              <div key={index} className="relative aspect-square rounded-lg overflow-hidden group">
+                                <Image
+                                  src={image || "/placeholder.svg"}
+                                  alt={`Producto ${index + 1}`}
+                                  fill
+                                  className="object-cover"
+                                />
+                                <button
+                                  onClick={() => handleRemoveImage(index)}
+                                  className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label>Videos del Producto</Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Formatos aceptados: MP4, WebM, MOV, AVI (máximo 50MB por video)
+                      </p>
+                      <div className="mt-2 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="file"
+                            accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
+                            multiple
+                            onChange={handleVideoUpload}
+                            className="flex-1"
+                            id="video-upload"
+                            disabled={uploadingVideo}
+                          />
+                          <Label
+                            htmlFor="video-upload"
+                            className={`cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 ${
+                              uploadingVideo ? "opacity-50 cursor-not-allowed" : ""
+                            }`}
+                          >
+                            <Video className="h-4 w-4 mr-2" />
+                            {uploadingVideo ? "Subiendo..." : "Subir Videos"}
+                          </Label>
+                        </div>
+
+                        {newProduct.videos.length > 0 && (
+                          <div className="grid grid-cols-2 gap-4">
+                            {newProduct.videos.map((videoUrl, index) => (
+                              <div
+                                key={index}
+                                className="relative aspect-video rounded-lg overflow-hidden group bg-black"
+                              >
+                                <video
+                                  src={videoUrl}
+                                  controls
+                                  className="w-full h-full object-contain"
+                                  preload="metadata"
+                                />
+                                <button
+                                  onClick={() => handleRemoveVideo(index)}
+                                  className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="featured"
+                        checked={newProduct.featured}
+                        onCheckedChange={(checked) => setNewProduct((prev) => ({ ...prev, featured: checked }))}
+                      />
+                      <Label htmlFor="featured">Producto Destacado</Label>
+                    </div>
+                    <Button onClick={handleAddProduct} className="w-full" disabled={uploadingVideo}>
+                      {uploadingVideo ? "Subiendo videos..." : "Agregar Producto"}
+                    </Button>
+                  </div>
+
+                  {/* Right Column: Preview */}
+                  <div className="hidden lg:block">
+                    <ProductPreview
+                      name={newProduct.name}
+                      price={newProduct.price}
+                      originalPrice={
+                        newProduct.discount && Number.parseFloat(newProduct.discount) > 0 ? newProduct.price : undefined
+                      }
+                      discount={newProduct.discount}
+                      category={newProduct.category}
+                      subcategory={newProduct.subcategory}
+                      description={newProduct.description}
+                      stock={newProduct.stock}
+                      images={newProduct.images}
+                      featured={newProduct.featured}
                     />
                   </div>
-
-                  <div>
-                    <Label>Imágenes del Producto</Label>
-                    <div className="mt-2 space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          onChange={handleImageUpload}
-                          className="flex-1"
-                          id="image-upload"
-                        />
-                        <Label
-                          htmlFor="image-upload"
-                          className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
-                        >
-                          <Upload className="h-4 w-4 mr-2" />
-                          Subir Imágenes
-                        </Label>
-                      </div>
-
-                      {newProduct.images.length > 0 && (
-                        <div className="grid grid-cols-3 gap-4">
-                          {newProduct.images.map((image, index) => (
-                            <div key={index} className="relative aspect-square rounded-lg overflow-hidden group">
-                              <Image
-                                src={image || "/placeholder.svg"}
-                                alt={`Producto ${index + 1}`}
-                                fill
-                                className="object-cover"
-                              />
-                              <button
-                                onClick={() => handleRemoveImage(index)}
-                                className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label>Videos del Producto</Label>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Formatos aceptados: MP4, WebM, MOV, AVI (máximo 50MB por video)
-                    </p>
-                    <div className="mt-2 space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="file"
-                          accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
-                          multiple
-                          onChange={handleVideoUpload}
-                          className="flex-1"
-                          id="video-upload"
-                          disabled={uploadingVideo}
-                        />
-                        <Label
-                          htmlFor="video-upload"
-                          className={`cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 ${
-                            uploadingVideo ? "opacity-50 cursor-not-allowed" : ""
-                          }`}
-                        >
-                          <Video className="h-4 w-4 mr-2" />
-                          {uploadingVideo ? "Subiendo..." : "Subir Videos"}
-                        </Label>
-                      </div>
-
-                      {newProduct.videos.length > 0 && (
-                        <div className="grid grid-cols-2 gap-4">
-                          {newProduct.videos.map((videoUrl, index) => (
-                            <div
-                              key={index}
-                              className="relative aspect-video rounded-lg overflow-hidden group bg-black"
-                            >
-                              <video
-                                src={videoUrl}
-                                controls
-                                className="w-full h-full object-contain"
-                                preload="metadata"
-                              />
-                              <button
-                                onClick={() => handleRemoveVideo(index)}
-                                className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="featured"
-                      checked={newProduct.featured}
-                      onCheckedChange={(checked) => setNewProduct((prev) => ({ ...prev, featured: checked }))}
-                    />
-                    <Label htmlFor="featured">Producto Destacado</Label>
-                  </div>
-                  <Button onClick={handleAddProduct} className="w-full" disabled={uploadingVideo}>
-                    {uploadingVideo ? "Subiendo videos..." : "Agregar Producto"}
-                  </Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -700,301 +739,337 @@ export function ProductManager() {
       </Card>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Producto</DialogTitle>
           </DialogHeader>
           {editingProduct && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="edit-name">Nombre del Producto</Label>
-                <Input
-                  id="edit-name"
-                  value={editingProduct.name}
-                  onChange={(e) => setEditingProduct((prev) => (prev ? { ...prev, name: e.target.value } : null))}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left Column: Form */}
+              <div className="space-y-4">
                 <div>
-                  <Label htmlFor="edit-price">Precio (COP)</Label>
+                  <Label htmlFor="edit-name">Nombre del Producto</Label>
                   <Input
-                    id="edit-price"
-                    type="number"
-                    step="1000"
-                    value={editingProduct.originalPrice || editingProduct.price}
-                    onChange={(e) =>
-                      setEditingProduct((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              price: Number.parseFloat(e.target.value) || 0,
-                              originalPrice: prev.discount ? Number.parseFloat(e.target.value) || 0 : undefined,
-                            }
-                          : null,
-                      )
-                    }
+                    id="edit-name"
+                    value={editingProduct.name}
+                    onChange={(e) => setEditingProduct((prev) => (prev ? { ...prev, name: e.target.value } : null))}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="edit-stock">Stock</Label>
-                  <Input
-                    id="edit-stock"
-                    type="number"
-                    value={editingProduct.stock}
-                    onChange={(e) =>
-                      setEditingProduct((prev) =>
-                        prev ? { ...prev, stock: Number.parseInt(e.target.value) || 0 } : null,
-                      )
-                    }
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="edit-discount">Descuento (%)</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="edit-discount"
-                    type="number"
-                    min="0"
-                    max="100"
-                    placeholder="Ej: 20"
-                    value={editingProduct.discount || ""}
-                    onChange={(e) => {
-                      const discount = Number.parseFloat(e.target.value)
-                      const originalPrice = editingProduct.originalPrice || editingProduct.price
-                      const newPrice = discount > 0 ? originalPrice * (1 - discount / 100) : originalPrice
-
-                      setEditingProduct((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              discount: discount > 0 ? discount : undefined,
-                              originalPrice: discount > 0 ? originalPrice : undefined,
-                              price: newPrice,
-                            }
-                          : null,
-                      )
-                    }}
-                  />
-                  <Percent className="h-4 w-4 text-muted-foreground" />
-                </div>
-                {editingProduct.discount && editingProduct.discount > 0 && (
-                  <div className="mt-2 p-3 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground">Precio original</p>
-                    <p className="text-sm line-through">${editingProduct.originalPrice?.toLocaleString("es-CO")} COP</p>
-                    <p className="text-sm text-muted-foreground mt-1">Precio con descuento</p>
-                    <p className="text-lg font-bold text-accent">${editingProduct.price.toLocaleString("es-CO")} COP</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-price">Precio (COP)</Label>
+                    <Input
+                      id="edit-price"
+                      type="number"
+                      step="1000"
+                      value={editingProduct.originalPrice || editingProduct.price}
+                      onChange={(e) =>
+                        setEditingProduct((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                price: Number.parseFloat(e.target.value) || 0,
+                                originalPrice: prev.discount ? Number.parseFloat(e.target.value) || 0 : undefined,
+                              }
+                            : null,
+                        )
+                      }
+                    />
                   </div>
-                )}
-              </div>
+                  <div>
+                    <Label htmlFor="edit-stock">Stock</Label>
+                    <Input
+                      id="edit-stock"
+                      type="number"
+                      value={editingProduct.stock}
+                      onChange={(e) =>
+                        setEditingProduct((prev) =>
+                          prev ? { ...prev, stock: Number.parseInt(e.target.value) || 0 } : null,
+                        )
+                      }
+                    />
+                  </div>
+                </div>
 
-              <div>
-                <Label htmlFor="edit-category">Categoría</Label>
-                <Select
-                  value={editingProduct.category}
-                  onValueChange={(value) =>
-                    setEditingProduct((prev) => (prev ? { ...prev, category: value, subcategory: "" } : null))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categoryOptions.map((category) => (
-                      <SelectItem key={category.key} value={category.key}>
-                        {category.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {editingProduct.category && (
                 <div>
-                  <Label htmlFor="edit-subcategory">Subcategoría</Label>
+                  <Label htmlFor="edit-discount">Descuento (%)</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="edit-discount"
+                      type="number"
+                      min="0"
+                      max="100"
+                      placeholder="Ej: 20"
+                      value={editingProduct.discount || ""}
+                      onChange={(e) => {
+                        const discount = Number.parseFloat(e.target.value)
+                        const originalPrice = editingProduct.originalPrice || editingProduct.price
+                        const newPrice = discount > 0 ? originalPrice * (1 - discount / 100) : originalPrice
+
+                        setEditingProduct((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                discount: discount > 0 ? discount : undefined,
+                                originalPrice: discount > 0 ? originalPrice : undefined,
+                                price: newPrice,
+                              }
+                            : null,
+                        )
+                      }}
+                    />
+                    <Percent className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  {editingProduct.discount && editingProduct.discount > 0 && (
+                    <div className="mt-2 p-3 bg-muted rounded-lg">
+                      <p className="text-sm text-muted-foreground">Precio original</p>
+                      <p className="text-sm line-through">
+                        ${editingProduct.originalPrice?.toLocaleString("es-CO")} COP
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">Precio con descuento</p>
+                      <p className="text-lg font-bold text-accent">
+                        ${editingProduct.price.toLocaleString("es-CO")} COP
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-category">Categoría</Label>
                   <Select
-                    value={editingProduct.subcategory || ""}
+                    value={editingProduct.category}
                     onValueChange={(value) =>
-                      setEditingProduct((prev) => (prev ? { ...prev, subcategory: value } : null))
+                      setEditingProduct((prev) => (prev ? { ...prev, category: value, subcategory: "" } : null))
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar subcategoría" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {getSubcategories(editingProduct.category).map((subcategory) => (
-                        <SelectItem key={subcategory} value={subcategory}>
-                          {subcategory}
+                      {categoryOptions.map((category) => (
+                        <SelectItem key={category.key} value={category.key}>
+                          {category.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
 
-              <div>
-                <Label htmlFor="edit-description">Descripción</Label>
-                <Textarea
-                  id="edit-description"
-                  value={editingProduct.description}
-                  onChange={(e) =>
-                    setEditingProduct((prev) => (prev ? { ...prev, description: e.target.value } : null))
+                {editingProduct.category && (
+                  <div>
+                    <Label htmlFor="edit-subcategory">Subcategoría</Label>
+                    <Select
+                      value={editingProduct.subcategory || ""}
+                      onValueChange={(value) =>
+                        setEditingProduct((prev) => (prev ? { ...prev, subcategory: value } : null))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar subcategoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getSubcategories(editingProduct.category).map((subcategory) => (
+                          <SelectItem key={subcategory} value={subcategory}>
+                            {subcategory}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div>
+                  <Label htmlFor="edit-description">Descripción</Label>
+                  <Textarea
+                    id="edit-description"
+                    value={editingProduct.description}
+                    onChange={(e) =>
+                      setEditingProduct((prev) => (prev ? { ...prev, description: e.target.value } : null))
+                    }
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <Label>Imágenes del Producto</Label>
+                  <div className="mt-2 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={async (e) => {
+                          const files = Array.from(e.target.files || [])
+                          const newImages: string[] = []
+                          for (const file of files) {
+                            try {
+                              const base64 = await convertImageToBase64(file)
+                              newImages.push(base64)
+                            } catch (error) {
+                              console.error("[v0] Error converting image:", error)
+                            }
+                          }
+                          setEditingProduct((prev) =>
+                            prev ? { ...prev, images: [...prev.images, ...newImages] } : null,
+                          )
+                        }}
+                        className="flex-1"
+                        id="edit-image-upload"
+                      />
+                      <Label
+                        htmlFor="edit-image-upload"
+                        className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Agregar
+                      </Label>
+                    </div>
+
+                    {editingProduct.images.length > 0 && (
+                      <div className="grid grid-cols-3 gap-4">
+                        {editingProduct.images.map((image, index) => (
+                          <div key={index} className="relative aspect-square rounded-lg overflow-hidden group">
+                            <Image
+                              src={image || "/placeholder.svg"}
+                              alt={`Producto ${index + 1}`}
+                              fill
+                              className="object-cover"
+                            />
+                            <button
+                              onClick={() =>
+                                setEditingProduct((prev) =>
+                                  prev ? { ...prev, images: prev.images.filter((_, i) => i !== index) } : null,
+                                )
+                              }
+                              className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Videos del Producto</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Formatos aceptados: MP4, WebM, MOV, AVI (máximo 50MB por video)
+                  </p>
+                  <div className="mt-2 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
+                        multiple
+                        onChange={async (e) => {
+                          const files = Array.from(e.target.files || [])
+                          const newVideos: string[] = []
+
+                          for (const file of files) {
+                            try {
+                              // Validar tamaño del archivo (máximo 50MB)
+                              if (file.size > 50 * 1024 * 1024) {
+                                alert(`El video ${file.name} es demasiado grande. Máximo 50MB.`)
+                                continue
+                              }
+
+                              // Validar formato
+                              const validFormats = ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo"]
+                              if (!validFormats.includes(file.type)) {
+                                alert(`El formato de ${file.name} no es válido. Usa MP4, WebM, MOV o AVI.`)
+                                continue
+                              }
+
+                              // Subir a Vercel Blob
+                              const blob = await put(`products/videos/${Date.now()}-${file.name}`, file, {
+                                access: "public",
+                              })
+
+                              newVideos.push(blob.url)
+                            } catch (error) {
+                              console.error("[v0] Error uploading video:", error)
+                              alert("Error al subir el video. Por favor intenta de nuevo.")
+                            }
+                          }
+
+                          setEditingProduct((prev) =>
+                            prev ? { ...prev, videos: [...prev.videos, ...newVideos] } : null,
+                          )
+                        }}
+                        className="flex-1"
+                        id="edit-video-upload"
+                      />
+                      <Label
+                        htmlFor="edit-video-upload"
+                        className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                      >
+                        <Video className="h-4 w-4 mr-2" />
+                        Agregar
+                      </Label>
+                    </div>
+
+                    {editingProduct.videos.length > 0 && (
+                      <div className="grid grid-cols-2 gap-4">
+                        {editingProduct.videos.map((videoUrl, index) => (
+                          <div key={index} className="relative aspect-video rounded-lg overflow-hidden group bg-black">
+                            <video
+                              src={videoUrl}
+                              controls
+                              className="w-full h-full object-contain"
+                              preload="metadata"
+                            />
+                            <button
+                              onClick={() =>
+                                setEditingProduct((prev) =>
+                                  prev ? { ...prev, videos: prev.videos.filter((_, i) => i !== index) } : null,
+                                )
+                              }
+                              className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="edit-featured"
+                    checked={editingProduct.featured}
+                    onCheckedChange={(checked) =>
+                      setEditingProduct((prev) => (prev ? { ...prev, featured: checked } : null))
+                    }
+                  />
+                  <Label htmlFor="edit-featured">Producto Destacado</Label>
+                </div>
+                <Button onClick={handleEditProduct} className="w-full">
+                  Guardar Cambios
+                </Button>
+              </div>
+
+              {/* Right Column: Preview */}
+              <div className="hidden lg:block">
+                <ProductPreview
+                  name={editingProduct.name}
+                  price={editingProduct.originalPrice?.toString() || editingProduct.price.toString()}
+                  originalPrice={
+                    editingProduct.discount && editingProduct.discount > 0
+                      ? editingProduct.originalPrice?.toString()
+                      : undefined
                   }
-                  rows={3}
+                  discount={editingProduct.discount?.toString()}
+                  category={editingProduct.category}
+                  subcategory={editingProduct.subcategory}
+                  description={editingProduct.description}
+                  stock={editingProduct.stock.toString()}
+                  images={editingProduct.images}
+                  featured={editingProduct.featured}
                 />
               </div>
-              <div>
-                <Label>Imágenes del Producto</Label>
-                <div className="mt-2 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={async (e) => {
-                        const files = Array.from(e.target.files || [])
-                        const newImages: string[] = []
-                        for (const file of files) {
-                          try {
-                            const base64 = await convertImageToBase64(file)
-                            newImages.push(base64)
-                          } catch (error) {
-                            console.error("[v0] Error converting image:", error)
-                          }
-                        }
-                        setEditingProduct((prev) => (prev ? { ...prev, images: [...prev.images, ...newImages] } : null))
-                      }}
-                      className="flex-1"
-                      id="edit-image-upload"
-                    />
-                    <Label
-                      htmlFor="edit-image-upload"
-                      className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Agregar
-                    </Label>
-                  </div>
-
-                  {editingProduct.images.length > 0 && (
-                    <div className="grid grid-cols-3 gap-4">
-                      {editingProduct.images.map((image, index) => (
-                        <div key={index} className="relative aspect-square rounded-lg overflow-hidden group">
-                          <Image
-                            src={image || "/placeholder.svg"}
-                            alt={`Producto ${index + 1}`}
-                            fill
-                            className="object-cover"
-                          />
-                          <button
-                            onClick={() =>
-                              setEditingProduct((prev) =>
-                                prev ? { ...prev, images: prev.images.filter((_, i) => i !== index) } : null,
-                              )
-                            }
-                            className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <Label>Videos del Producto</Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Formatos aceptados: MP4, WebM, MOV, AVI (máximo 50MB por video)
-                </p>
-                <div className="mt-2 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="file"
-                      accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
-                      multiple
-                      onChange={async (e) => {
-                        const files = Array.from(e.target.files || [])
-                        const newVideos: string[] = []
-
-                        for (const file of files) {
-                          try {
-                            // Validar tamaño del archivo (máximo 50MB)
-                            if (file.size > 50 * 1024 * 1024) {
-                              alert(`El video ${file.name} es demasiado grande. Máximo 50MB.`)
-                              continue
-                            }
-
-                            // Validar formato
-                            const validFormats = ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo"]
-                            if (!validFormats.includes(file.type)) {
-                              alert(`El formato de ${file.name} no es válido. Usa MP4, WebM, MOV o AVI.`)
-                              continue
-                            }
-
-                            // Subir a Vercel Blob
-                            const blob = await put(`products/videos/${Date.now()}-${file.name}`, file, {
-                              access: "public",
-                            })
-
-                            newVideos.push(blob.url)
-                          } catch (error) {
-                            console.error("[v0] Error uploading video:", error)
-                            alert("Error al subir el video. Por favor intenta de nuevo.")
-                          }
-                        }
-
-                        setEditingProduct((prev) => (prev ? { ...prev, videos: [...prev.videos, ...newVideos] } : null))
-                      }}
-                      className="flex-1"
-                      id="edit-video-upload"
-                    />
-                    <Label
-                      htmlFor="edit-video-upload"
-                      className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
-                    >
-                      <Video className="h-4 w-4 mr-2" />
-                      Agregar
-                    </Label>
-                  </div>
-
-                  {editingProduct.videos.length > 0 && (
-                    <div className="grid grid-cols-2 gap-4">
-                      {editingProduct.videos.map((videoUrl, index) => (
-                        <div key={index} className="relative aspect-video rounded-lg overflow-hidden group bg-black">
-                          <video src={videoUrl} controls className="w-full h-full object-contain" preload="metadata" />
-                          <button
-                            onClick={() =>
-                              setEditingProduct((prev) =>
-                                prev ? { ...prev, videos: prev.videos.filter((_, i) => i !== index) } : null,
-                              )
-                            }
-                            className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="edit-featured"
-                  checked={editingProduct.featured}
-                  onCheckedChange={(checked) =>
-                    setEditingProduct((prev) => (prev ? { ...prev, featured: checked } : null))
-                  }
-                />
-                <Label htmlFor="edit-featured">Producto Destacado</Label>
-              </div>
-              <Button onClick={handleEditProduct} className="w-full">
-                Guardar Cambios
-              </Button>
             </div>
           )}
         </DialogContent>

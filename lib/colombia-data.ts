@@ -1345,6 +1345,7 @@ export const paymentMethods = [
   { value: "daviplata", label: "Daviplata" },
   { value: "tarjeta", label: "Tarjeta de Crédito/Débito" },
   { value: "banco", label: "Transferencia Bancaria" },
+  { value: "contraentrega", label: "Paga al recibir" },
 ]
 
 export const shippingTypes = [

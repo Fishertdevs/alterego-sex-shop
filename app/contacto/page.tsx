@@ -23,7 +23,7 @@ export default function ContactoPage() {
     {
       icon: Clock,
       title: "Horarios de Atención",
-      details: ["Lun - Vie: 8:00 - 20:00", "Sáb: 10:00 - 16:00"],
+      details: ["Lunes a sábado: 9:00 a.m. – 10:00 p.m.", "Domingos: 10:00 a.m. – 8:00 p.m."],
     },
   ]
 
@@ -40,7 +40,7 @@ export default function ContactoPage() {
       icon: Instagram,
       title: "Instagram",
       details: [
-        settings?.instagram_url || "https://www.instagram.com/alter.egooo0?igsh=OG14eW1hcXZuaHZx",
+        settings?.instagram_url || "https://www.instagram.com/alterego.shop1?igsh=MTdrcnY5bjI0czFobg==",
         "Síguenos en Instagram",
       ],
     },

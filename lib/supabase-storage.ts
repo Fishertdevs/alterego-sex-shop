@@ -200,6 +200,8 @@ export interface SupabaseReview {
   verified_purchase: boolean
   approved: boolean
   is_offensive?: boolean
+  review_type?: "pre_sale" | "post_sale"
+  images?: string[]
   created_at: string
   updated_at: string
 }

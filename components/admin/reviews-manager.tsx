@@ -22,7 +22,11 @@ import type { SupabaseReview } from "@/lib/supabase-storage"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
 
-type ReviewWithProduct = SupabaseReview & { product_name?: string }
+type ReviewWithProduct = SupabaseReview & {
+  product_name?: string
+  review_type?: "pre_sale" | "post_sale"
+  images?: string[]
+}
 
 export function ReviewsManager() {
   const [reviews, setReviews] = useState<ReviewWithProduct[]>([])
@@ -240,7 +244,7 @@ export function ReviewsManager() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Cliente</TableHead>
-                    <TableHead>Producto</TableHead>
+                    <TableHead>Tipo/Producto</TableHead>
                     <TableHead>Calificación</TableHead>
                     <TableHead>Comentario</TableHead>
                     <TableHead>Estado</TableHead>
@@ -265,7 +269,23 @@ export function ReviewsManager() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <p className="text-sm">{review.product_name || "Sin producto"}</p>
+                        <div className="space-y-1">
+                          {review.review_type === "pre_sale" ? (
+                            <Badge variant="secondary" className="text-xs">
+                              Pre-venta (Servicio)
+                            </Badge>
+                          ) : (
+                            <Badge variant="default" className="text-xs bg-accent">
+                              Post-venta (Producto)
+                            </Badge>
+                          )}
+                          {review.product_name && <p className="text-sm">{review.product_name}</p>}
+                          {review.images && review.images.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              📷 {review.images.length} {review.images.length === 1 ? "imagen" : "imágenes"}
+                            </p>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>{renderStars(review.rating)}</TableCell>
                       <TableCell>

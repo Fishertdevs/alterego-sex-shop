@@ -49,6 +49,7 @@ export function ReviewFormModal({ isOpen, onClose, onSuccess }: ReviewFormModalP
           rating: formData.rating,
           comment: formData.comment,
           approved: false, // Requiere aprobación del admin
+          review_type: "pre_sale", // Reseña pre-venta (servicio)
         },
       ])
 

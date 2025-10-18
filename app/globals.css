@@ -358,3 +358,13 @@
 .dark .scrollbar-thin::-webkit-scrollbar-track {
   background: oklch(0.11 0 0);
 }
+
+/* Agregando clase para ocultar scrollbar pero mantener funcionalidad */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

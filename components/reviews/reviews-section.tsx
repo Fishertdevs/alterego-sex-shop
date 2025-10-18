@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ReviewFormModal } from "./review-form-modal"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { Badge } from "@/components/ui/badge"
+import Image from "next/image"
 
 interface Review {
   id: string
@@ -15,6 +17,9 @@ interface Review {
   created_at: string
   product_id?: string
   approved?: boolean
+  review_type?: "pre_sale" | "post_sale"
+  images?: string[]
+  product_name?: string
 }
 
 export function ReviewsSection() {
@@ -41,7 +46,16 @@ export function ReviewsSection() {
     try {
       console.log("[v0] Loading reviews from Supabase...")
 
-      const { data, error } = await supabase.from("reviews").select("*").order("created_at", { ascending: false })
+      const { data, error } = await supabase
+        .from("reviews")
+        .select(`
+          *,
+          products (
+            name
+          )
+        `)
+        .eq("approved", true)
+        .order("created_at", { ascending: false })
 
       console.log("[v0] Reviews query result:", { data, error })
       console.log("[v0] Number of reviews loaded:", data?.length || 0)
@@ -51,8 +65,13 @@ export function ReviewsSection() {
         throw error
       }
 
-      setReviews(data || [])
-      setFilteredReviews(data || [])
+      const reviewsWithProductName = (data || []).map((review: any) => ({
+        ...review,
+        product_name: review.products?.name,
+      }))
+
+      setReviews(reviewsWithProductName)
+      setFilteredReviews(reviewsWithProductName)
     } catch (error) {
       console.error("[v0] Error in loadReviews:", error)
     } finally {
@@ -198,9 +217,35 @@ export function ReviewsSection() {
                             <div>
                               <h3 className="font-semibold text-foreground font-serif">{review.customer_name}</h3>
                               <p className="text-sm text-muted-foreground">{formatDate(review.created_at)}</p>
+                              {review.review_type === "post_sale" && review.product_name && (
+                                <Badge variant="outline" className="mt-1 text-xs">
+                                  Producto: {review.product_name}
+                                </Badge>
+                              )}
+                              {review.review_type === "pre_sale" && (
+                                <Badge variant="secondary" className="mt-1 text-xs">
+                                  Servicio
+                                </Badge>
+                              )}
                             </div>
                             {renderStars(review.rating)}
                           </div>
+
+                          {review.images && review.images.length > 0 && (
+                            <div className="mb-4 grid grid-cols-3 gap-2">
+                              {review.images.slice(0, 3).map((imageUrl, index) => (
+                                <div key={index} className="relative aspect-square">
+                                  <Image
+                                    src={imageUrl || "/placeholder.svg"}
+                                    alt={`Imagen ${index + 1}`}
+                                    fill
+                                    className="object-cover rounded-md"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
                           <Quote className="h-8 w-8 text-accent/20 mb-2" />
                           <p className="text-muted-foreground italic font-serif">{review.comment}</p>
                         </Card>

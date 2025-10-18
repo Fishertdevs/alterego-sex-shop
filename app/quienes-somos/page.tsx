@@ -61,9 +61,10 @@ export default function QuienesSomosPage() {
                 <Heart className="h-16 w-16 text-accent mx-auto mb-4 animate-[heartbeat_2s_ease-in-out_infinite]" />
                 <h3 className="text-2xl font-bold text-foreground mb-4">Nuestra Misión</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  {
-                    "En ALTERƎGO aspiramos a ser reconocidos como la boutique erótica líder en\nLatinoamérica, destacándonos por nuestra excelencia en servicio, la innovación en\nnuestra oferta de productos y la capacidad de transformar la intimidad en una\nexperiencia única y sofisticada.\nNuestra visión es consolidarnos como una marca de referencia internacional que inspira\na las personas a explorar su alter ego con confianza y seguridad, promoviendo una\ncultura en la que el placer y la sensualidad sean entendidos como parte esencial del\nbienestar y la autenticidad personal.\nQueremos que cada cliente que nos elija experimente no solo la compra de un producto,\nsino la vivencia de un concepto: la unión entre elegancia, misterio y libertad,\nconvirtiendo a ALTERƎGO  en un símbolo de distinción y confianza dentro del\nmercado erótico."
-                  }
+                  Ser la boutique erótica líder en Latinoamérica, destacándonos por nuestra excelencia en servicio e
+                  innovación. Inspiramos a las personas a explorar su alter ego con confianza, transformando la
+                  intimidad en una experiencia única donde elegancia, misterio y libertad se unen para crear distinción
+                  y autenticidad.
                 </p>
               </div>
             </div>

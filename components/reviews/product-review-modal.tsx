@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Star } from "lucide-react"
+import { Star, Upload, X } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import Image from "next/image"
+import { put } from "@vercel/blob"
 
 interface ProductReviewModalProps {
   isOpen: boolean
@@ -30,6 +31,8 @@ export function ProductReviewModal({ isOpen, onClose, productId, orderId }: Prod
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
+  const [uploadedImages, setUploadedImages] = useState<string[]>([])
+  const [uploadingImage, setUploadingImage] = useState(false)
   const supabase = createBrowserClient()
 
   useEffect(() => {
@@ -47,6 +50,49 @@ export function ProductReviewModal({ isOpen, onClose, productId, orderId }: Prod
     } catch (err) {
       console.error("Error loading product:", err)
     }
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    if (uploadedImages.length + files.length > 3) {
+      setError("Máximo 3 imágenes permitidas")
+      return
+    }
+
+    setUploadingImage(true)
+    setError("")
+
+    try {
+      const newImages: string[] = []
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+
+        if (file.size > 5 * 1024 * 1024) {
+          setError("Las imágenes deben ser menores a 5MB")
+          continue
+        }
+
+        const blob = await put(`reviews/${Date.now()}-${file.name}`, file, {
+          access: "public",
+        })
+
+        newImages.push(blob.url)
+      }
+
+      setUploadedImages([...uploadedImages, ...newImages])
+    } catch (err) {
+      console.error("Error uploading images:", err)
+      setError("Error al subir las imágenes. Por favor intenta de nuevo.")
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
+  const removeImage = (index: number) => {
+    setUploadedImages(uploadedImages.filter((_, i) => i !== index))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,6 +117,8 @@ export function ProductReviewModal({ isOpen, onClose, productId, orderId }: Prod
           comment: formData.comment,
           verified_purchase: !!orderId,
           approved: false,
+          review_type: "post_sale",
+          images: uploadedImages,
         },
       ])
 
@@ -93,12 +141,13 @@ export function ProductReviewModal({ isOpen, onClose, productId, orderId }: Prod
     setHoveredRating(0)
     setError("")
     setSuccess(false)
+    setUploadedImages([])
     onClose()
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md bg-background border-border">
+      <DialogContent className="sm:max-w-md bg-background border-border max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-serif text-foreground">Califica este Producto</DialogTitle>
         </DialogHeader>
@@ -181,6 +230,58 @@ export function ProductReviewModal({ isOpen, onClose, productId, orderId }: Prod
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div>
+                <Label className="font-serif">Imágenes del producto (opcional)</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Comparte fotos del producto que recibiste (máximo 3)
+                </p>
+
+                {uploadedImages.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    {uploadedImages.map((url, index) => (
+                      <div key={index} className="relative aspect-square">
+                        <Image
+                          src={url || "/placeholder.svg"}
+                          alt={`Imagen ${index + 1}`}
+                          fill
+                          className="object-cover rounded-md"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {uploadedImages.length < 3 && (
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageUpload}
+                      disabled={uploadingImage}
+                      className="hidden"
+                      id="image-upload"
+                    />
+                    <label
+                      htmlFor="image-upload"
+                      className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                    >
+                      <Upload className="h-5 w-5 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground font-serif">
+                        {uploadingImage ? "Subiendo..." : "Subir imágenes"}
+                      </span>
+                    </label>
+                  </div>
+                )}
               </div>
 
               <div>

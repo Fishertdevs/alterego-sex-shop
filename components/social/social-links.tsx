@@ -8,7 +8,7 @@ export function SocialLinks() {
     {
       name: "Instagram",
       icon: Instagram,
-      url: "https://www.instagram.com/alter.egooo0?igsh=OG14eW1hcXZuaHZx",
+      url: "https://www.instagram.com/alterego.shop1?igsh=MTdrcnY5bjI0czFobg==",
       color: "hover:text-accent",
     },
     {
