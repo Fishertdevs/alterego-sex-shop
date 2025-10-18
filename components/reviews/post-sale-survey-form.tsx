@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Star } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import Image from "next/image"
+import { toast } from "react-toastify"
 
 interface PostSaleSurveyFormProps {
   token: string
@@ -75,20 +76,28 @@ export function PostSaleSurveyForm({
 
       if (insertError) {
         console.error("[v0] Error de Supabase:", insertError)
+        console.error("[v0] Código de error:", insertError.code)
+        console.error("[v0] Mensaje de error:", insertError.message)
+        console.error("[v0] Detalles del error:", insertError.details)
         throw insertError
       }
 
       console.log("[v0] Encuesta enviada exitosamente:", data)
+      toast.success("¡Gracias por tu opinión!")
       onSuccess()
     } catch (err: any) {
       console.error("[v0] Error al enviar encuesta:", err)
 
       if (err.code === "23505") {
         setError("Esta encuesta ya ha sido completada anteriormente")
-      } else if (err.code === "42501") {
-        setError("No tienes permisos para enviar esta encuesta. Por favor contacta al administrador.")
-      } else if (err.message?.includes("JWT")) {
+      } else if (err.code === "42501" || err.message?.includes("row-level security")) {
+        setError(
+          "Error de permisos: Las políticas de seguridad no están configuradas. Por favor contacta al administrador para ejecutar el script SQL de RLS.",
+        )
+      } else if (err.code === "PGRST301" || err.message?.includes("JWT")) {
         setError("Error de autenticación. Por favor recarga la página e intenta nuevamente.")
+      } else if (err.message?.includes("violates")) {
+        setError("Error de validación: Verifica que todos los campos estén correctos")
       } else {
         setError(`Error al enviar la encuesta: ${err.message || "Por favor intenta de nuevo"}`)
       }

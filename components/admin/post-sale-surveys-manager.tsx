@@ -61,6 +61,40 @@ export function PostSaleSurveysManager() {
 
   useEffect(() => {
     loadSurveys()
+
+    const channel = supabase
+      .channel("post_sale_surveys_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "post_sale_surveys",
+        },
+        (payload) => {
+          console.log("[v0] Cambio detectado en post_sale_surveys:", payload)
+
+          if (payload.eventType === "INSERT") {
+            // Agregar nueva encuesta al inicio de la lista
+            setSurveys((prev) => [payload.new as PostSaleSurvey, ...prev])
+            toast.success("Nueva encuesta recibida")
+          } else if (payload.eventType === "UPDATE") {
+            // Actualizar encuesta existente
+            setSurveys((prev) =>
+              prev.map((survey) => (survey.id === payload.new.id ? (payload.new as PostSaleSurvey) : survey)),
+            )
+          } else if (payload.eventType === "DELETE") {
+            // Eliminar encuesta
+            setSurveys((prev) => prev.filter((survey) => survey.id !== payload.old.id))
+          }
+        },
+      )
+      .subscribe()
+
+    // Cleanup: desuscribirse cuando el componente se desmonte
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   const loadSurveys = async () => {
