@@ -53,12 +53,21 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
     try {
       console.log("[v0] Creating order without updating stock")
+      console.log(
+        "[v0] Cart items to save:",
+        items.map((item) => ({
+          product_id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+      )
 
       const { data: order, error } = await supabase
         .from("orders")
         .insert({
           products: items.map((item) => ({
-            id: item.id,
+            product_id: item.id, // Cambiado de "id" a "product_id" para que coincida con la función de actualización de stock
             name: item.name,
             quantity: item.quantity,
             price: item.price,
@@ -89,6 +98,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       }
 
       console.log("[v0] Order created successfully:", order.id)
+      console.log("[v0] Order products saved:", order.products)
 
       await supabase.from("notifications").insert({
         type: "new_sale",

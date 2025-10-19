@@ -138,7 +138,7 @@ export default function AdminPage() {
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-2">
               <Shield className="h-8 w-8 text-accent" />
-              <h1 className="text-3xl font-bold text-foreground">Panel de Administración</h1>
+              <h1 className="text-3xl font-bold text-foreground tracking-normal leading-[4]">Panel de Administración</h1>
             </div>
             <p className="text-muted-foreground">Gestiona tu tienda ALTEREGO</p>
           </div>

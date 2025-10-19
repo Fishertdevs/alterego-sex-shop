@@ -41,7 +41,7 @@ interface Order {
   customer_department: string
   customer_municipality: string
   customer_email?: string
-  products: Array<{ id: string; name: string; quantity: number; price: number }>
+  products: Array<{ id: string; name: string; quantity: number; price: number; product_id?: string }> // Added product_id to the interface
   total_product_cost: number
   payment_method: string
   payment_status: string
@@ -533,32 +533,68 @@ export function OrdersCustomersManager() {
     }).format(value)
   }
 
-  // Moved stock update logic to handleUpdateStatus
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+    console.log("[v0] ===== INICIO ACTUALIZACIÓN DE ESTADO =====")
+    console.log("[v0] Order ID:", orderId)
+    console.log("[v0] New status:", newStatus)
+
     if (newStatus === "confirmed") {
       const order = orders.find((o) => o.id === orderId)
-      if (order && order.products && order.products.length > 0) {
-        console.log("[v0] Order confirmed, updating stock and analytics:", orderId)
+      console.log("[v0] Order found:", order ? "YES" : "NO")
+      console.log("[v0] Order products:", order?.products)
+      console.log("[v0] Products length:", order?.products?.length || 0)
 
-        // Actualizar el stock de cada producto
+      if (order && order.products && order.products.length > 0) {
+        console.log("[v0] Order confirmed, updating stock for", order.products.length, "products")
+
         for (const product of order.products) {
+          const productId = (product as any).product_id || product.id
+          const quantity = product.quantity
+
+          console.log("[v0] Processing product:")
+          console.log("[v0]   - Product ID:", productId)
+          console.log("[v0]   - Product name:", product.name)
+          console.log("[v0]   - Quantity:", quantity)
+
+          if (!productId) {
+            console.error("[v0] ERROR: Product ID is missing!")
+            console.error("[v0] Product object:", JSON.stringify(product))
+            alert(`Error: No se encontró el ID del producto "${product.name}"`)
+            continue
+          }
+
           const { data: currentProduct, error: fetchError } = await supabase
             .from("products")
-            .select("stock")
-            .eq("id", product.id)
+            .select("stock, name, category, subcategory")
+            .eq("id", productId)
             .single()
 
           if (fetchError || !currentProduct) {
             console.error("[v0] Error fetching product:", fetchError)
+            alert(`Error al obtener información del producto ${product.name}`)
             continue
           }
 
-          const newStock = currentProduct.stock - product.quantity
+          console.log("[v0] Current product info:")
+          console.log("[v0]   - Name:", currentProduct.name)
+          console.log("[v0]   - Category:", currentProduct.category)
+          console.log("[v0]   - Subcategory:", currentProduct.subcategory)
+          console.log("[v0]   - Current stock:", currentProduct.stock)
+
+          const newStock = currentProduct.stock - quantity
 
           if (newStock < 0) {
-            alert(`Stock insuficiente para el producto ${product.id}. Stock actual: ${currentProduct.stock}`)
+            console.error("[v0] Insufficient stock for product:", currentProduct.name)
+            alert(
+              `Stock insuficiente para el producto "${currentProduct.name}". Stock actual: ${currentProduct.stock}, Cantidad solicitada: ${quantity}`,
+            )
             return
           }
+
+          console.log("[v0] Updating stock:")
+          console.log("[v0]   - Previous stock:", currentProduct.stock)
+          console.log("[v0]   - Quantity to subtract:", quantity)
+          console.log("[v0]   - New stock:", newStock)
 
           const { error: updateError } = await supabase
             .from("products")
@@ -566,19 +602,29 @@ export function OrdersCustomersManager() {
               stock: newStock,
               updated_at: new Date().toISOString(),
             })
-            .eq("id", product.id)
+            .eq("id", productId)
 
           if (updateError) {
             console.error("[v0] Error updating stock:", updateError)
-            alert("Error al actualizar el stock")
+            alert(`Error al actualizar el stock del producto "${currentProduct.name}"`)
             return
           }
 
-          console.log("[v0] Stock updated for product:", product.id, "New stock:", newStock)
+          console.log("[v0] ✅ Stock updated successfully for", currentProduct.name)
+          console.log("[v0]   - Previous:", currentProduct.stock, "→ New:", newStock)
+        }
+
+        console.log("[v0] ✅ All products stock updated successfully")
+      } else {
+        console.log("[v0] ⚠️ Order has no products, skipping stock update")
+        if (order) {
+          console.log("[v0] Order data:", JSON.stringify(order, null, 2))
         }
       }
     }
 
+    // Actualizar el estado del pedido
+    console.log("[v0] Updating order status in database...")
     const { error } = await supabase
       .from("orders")
       .update({
@@ -588,11 +634,13 @@ export function OrdersCustomersManager() {
       .eq("id", orderId)
 
     if (error) {
-      console.error("Error updating order status:", error)
+      console.error("[v0] Error updating order status:", error)
       alert("Error al actualizar el estado del pedido")
       return
     }
 
+    console.log("[v0] ✅ Order status updated successfully to:", newStatus)
+    console.log("[v0] ===== FIN ACTUALIZACIÓN DE ESTADO =====")
     await loadOrders()
   }
 
@@ -949,7 +997,6 @@ export function OrdersCustomersManager() {
                             order.customer_name
                           )}
                         </TableCell>
-
                         <TableCell className="text-sm">
                           {isEditing ? (
                             <div className="space-y-2 min-w-[200px]">
@@ -1011,7 +1058,6 @@ export function OrdersCustomersManager() {
                             </div>
                           )}
                         </TableCell>
-
                         <TableCell>
                           {isEditing ? (
                             <div className="flex items-center gap-1">
@@ -1033,20 +1079,16 @@ export function OrdersCustomersManager() {
                             </div>
                           )}
                         </TableCell>
-
                         <TableCell className="font-semibold">
                           {formatCurrency(order.total_product_cost + order.shipping_cost)}
                         </TableCell>
-
                         <TableCell>
                           {isEditing ? (
                             <div className="space-y-2 min-w-[150px]">
-                              {" "}
-                              {/* Adjusted min-width */}
                               <Select
                                 value={editingOrder.payment_method || ""}
-                                onValueChange={
-                                  (value) => setEditingOrder((prev) => ({ ...prev, payment_method: value, bank: "" })) // Reset bank on change
+                                onValueChange={(value) =>
+                                  setEditingOrder((prev) => ({ ...prev, payment_method: value, bank: "" }))
                                 }
                               >
                                 <SelectTrigger className="text-xs">
@@ -1094,7 +1136,6 @@ export function OrdersCustomersManager() {
                             </div>
                           )}
                         </TableCell>
-
                         <TableCell>
                           {isEditing ? (
                             <div className="space-y-2 min-w-[180px]">
@@ -1182,7 +1223,6 @@ export function OrdersCustomersManager() {
                             </div>
                           )}
                         </TableCell>
-
                         <TableCell>
                           {isEditing ? (
                             <Select
@@ -1199,12 +1239,21 @@ export function OrdersCustomersManager() {
                               </SelectContent>
                             </Select>
                           ) : (
-                            <Badge variant={getStatusColor(order.order_status)}>
-                              {getStatusLabel(order.order_status)}
-                            </Badge>
+                            <Select
+                              value={order.order_status}
+                              onValueChange={(value) => handleUpdateStatus(order.id, value)}
+                            >
+                              <SelectTrigger className="text-xs w-[120px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pending">Pendiente</SelectItem>
+                                <SelectItem value="confirmed">Confirmado</SelectItem>
+                                <SelectItem value="cancelled">Descartado</SelectItem>
+                              </SelectContent>
+                            </Select>
                           )}
                         </TableCell>
-
                         <TableCell>
                           {isEditing ? (
                             <Select
@@ -1242,7 +1291,6 @@ export function OrdersCustomersManager() {
                             </Select>
                           )}
                         </TableCell>
-
                         <TableCell>
                           {isEditing ? (
                             <div className="flex gap-1">
@@ -1282,7 +1330,6 @@ export function OrdersCustomersManager() {
                             </div>
                           )}
                         </TableCell>
-
                         <TableCell>
                           <Button
                             variant="ghost"
