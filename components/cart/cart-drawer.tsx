@@ -23,29 +23,27 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const supabase = createBrowserClient()
 
   const generateWhatsAppMessage = () => {
-    let message = "💋 ¡Hola! Te saluda el equipo de *ALTERƎGO* 🔥\n\n"
+    let message = "¡Hola! Te saluda el equipo de *ALTERƎGO*\n\n"
     message += "Hemos recibido tu solicitud con los siguientes productos:\n\n"
 
     items.forEach((item, index) => {
-      const precioUnitario = item.price
-      const subtotal = precioUnitario * item.quantity
+      const subtotal = item.price * item.quantity
+      const productUrl = `https://www.alterego-store.com.co/productos/${item.category}?producto=${item.id}`
 
       message += `${index + 1}. *${item.name}*\n`
-      message += `    🧾 Cantidad: ${item.quantity} ${item.quantity === 1 ? "unidad" : "unidades"}\n`
-      message += `    💰 Precio unitario: $${precioUnitario.toLocaleString("es-CO")} COP\n`
-      message += `    💸 Subtotal: $${subtotal.toLocaleString("es-CO")} COP\n`
-
-      const productUrl = `${window.location.origin}/productos/${item.category}?producto=${item.id}`
-      message += `    🔗 Ver producto: ${productUrl}\n\n`
+      message += `   Cantidad: ${item.quantity} ${item.quantity === 1 ? "unidad" : "unidades"}\n`
+      message += `   Precio unitario: $${item.price.toLocaleString("es-CO")} COP\n`
+      message += `   Subtotal: $${subtotal.toLocaleString("es-CO")} COP\n`
+      message += `   Ver producto: ${productUrl}\n\n`
     })
 
-    message += "───────────────────────\n\n"
-    message += "🧠 *Resumen del pedido:*\n\n"
-    message += `💵 Total a pagar: $${total.toLocaleString("es-CO")} COP\n\n`
-    message += "🚚 Envíos nacionales por *Coordinadora*.\n"
+    message += "━━━━━━━━━━━━━━━━━━━━\n\n"
+    message += "*Resumen del pedido:*\n"
+    message += `Total a pagar: *$${total.toLocaleString("es-CO")} COP*\n`
+    message += `Envíos nacionales por Coordinadora.\n\n`
     message += "Si prefieres otra transportadora, indícalo en este chat y ajustaremos tu envío.\n\n"
-    message += "💳 Métodos de pago disponibles: *Nequi, Daviplata, PSE y Tarjeta.*\n\n"
-    message += "Gracias por elegir *ALTERƎGO*, donde el placer comienza con la imaginación. 💫"
+    message += "*Métodos de pago disponibles:* Nequi, Daviplata, PSE y Tarjeta.\n\n"
+    message += "Gracias por elegir *ALTERƎGO*, donde el placer comienza con la imaginación."
 
     return encodeURIComponent(message)
   }
@@ -103,10 +101,14 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
       clearCart()
 
-      const whatsappNumber = settings?.store_phone || "573168192054"
+      const whatsappNumber = settings?.store_phone || "+57 3133462402"
       const cleanNumber = whatsappNumber.replace(/[\s\-()+ ]/g, "")
       const message = generateWhatsAppMessage()
-      console.log("[v0] Redirecting to WhatsApp:", cleanNumber)
+
+      console.log("[v0] Cart - Raw WhatsApp number:", whatsappNumber)
+      console.log("[v0] Cart - Cleaned WhatsApp number:", cleanNumber)
+      console.log("[v0] Cart - WhatsApp URL:", `https://wa.me/${cleanNumber}?text=${message}`)
+
       window.open(`https://wa.me/${cleanNumber}?text=${message}`, "_blank", "noopener,noreferrer")
 
       onClose()
