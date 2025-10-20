@@ -59,6 +59,8 @@ interface Order {
   updated_at: string
   notes?: string
   bank?: string // Added bank field to the interface
+  account_type?: string // Added account_type field
+  account_number?: string // Added account_number field
 }
 
 const deliveryStatusOptions = [
@@ -81,8 +83,14 @@ export function OrdersCustomersManager() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null)
 
+  const [selectedOrders, setSelectedOrders] = useState<string[]>([])
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
+  // </CHANGE>
+
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null)
-  const [editingOrder, setEditingOrder] = useState<Partial<Order & { bank?: string }>>({}) // Include bank in editingOrder type
+  const [editingOrder, setEditingOrder] = useState<
+    Partial<Order & { bank?: string; account_type?: string; account_number?: string }>
+  >({}) // Include bank, account_type, and account_number in editingOrder type
   const [editingDepartment, setEditingDepartment] = useState("")
   const [editingMunicipalities, setEditingMunicipalities] = useState<Array<{ name: string; code: string }>>([])
 
@@ -92,15 +100,17 @@ export function OrdersCustomersManager() {
     customer_address: "",
     customer_department: "",
     customer_municipality: "",
-    customer_email: "", // Kept email in newOrder state for consistency with original, though removed from details
+    customer_email: "",
     total_product_cost: "",
     payment_method: "",
-    bank: "", // Added bank to newOrder state
+    bank: "",
+    account_type: "", // Added account_type field
+    account_number: "", // Added account_number field
     shipping_type: "",
     shipping_cost: "",
     shipping_company: "",
-    shipping_carrier: "", // Added shipping_carrier to newOrder state
-    shipping_notes: "", // Added shipping_notes to newOrder state
+    shipping_carrier: "",
+    shipping_notes: "",
     notes: "",
   })
 
@@ -189,6 +199,17 @@ export function OrdersCustomersManager() {
       return
     }
 
+    if (newOrder.payment_method === "tarjeta" || newOrder.payment_method === "banco") {
+      if (!newOrder.account_type) {
+        alert("Por favor selecciona el tipo de cuenta (Corriente o Ahorros)")
+        return
+      }
+      if (!newOrder.account_number) {
+        alert("Por favor ingresa el número de cuenta")
+        return
+      }
+    }
+
     const { error } = await supabase.from("orders").insert([
       {
         customer_name: newOrder.customer_name,
@@ -199,12 +220,14 @@ export function OrdersCustomersManager() {
         customer_email: newOrder.customer_email,
         total_product_cost: parseFormattedNumber(newOrder.total_product_cost),
         payment_method: newOrder.payment_method,
-        bank: newOrder.bank || null, // Insert bank value
+        bank: newOrder.bank || null,
+        account_type: newOrder.account_type || null, // Added account_type to insert
+        account_number: newOrder.account_number || null, // Added account_number to insert
         shipping_type: newOrder.shipping_type,
         shipping_cost: parseFormattedNumber(newOrder.shipping_cost),
         shipping_company: newOrder.shipping_company,
-        shipping_carrier: newOrder.shipping_carrier, // Added shipping_carrier to insert
-        shipping_notes: newOrder.shipping_notes, // Added shipping_notes to insert
+        shipping_carrier: newOrder.shipping_carrier,
+        shipping_notes: newOrder.shipping_notes,
         notes: newOrder.notes,
         products: [],
         payment_status: "pending",
@@ -316,6 +339,35 @@ export function OrdersCustomersManager() {
     setDeleteDialogOpen(true)
   }
 
+  const handleSelectAll = () => {
+    if (selectedOrders.length === filteredOrders.length) {
+      setSelectedOrders([])
+    } else {
+      setSelectedOrders(filteredOrders.map((order) => order.id))
+    }
+  }
+
+  const handleSelectOrder = (orderId: string) => {
+    setSelectedOrders((prev) => (prev.includes(orderId) ? prev.filter((id) => id !== orderId) : [...prev, orderId]))
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedOrders.length === 0) return
+
+    const { error } = await supabase.from("orders").delete().in("id", selectedOrders)
+
+    if (error) {
+      console.error("Error deleting orders:", error)
+      alert("Error al eliminar los pedidos")
+      return
+    }
+
+    await loadOrders()
+    setSelectedOrders([])
+    setBulkDeleteDialogOpen(false)
+  }
+  // </CHANGE>
+
   const confirmDeleteOrder = async () => {
     if (!orderToDelete) return
 
@@ -347,12 +399,14 @@ export function OrdersCustomersManager() {
       customer_email: "",
       total_product_cost: "",
       payment_method: "",
-      bank: "", // Reset bank field
+      bank: "",
+      account_type: "", // Reset account_type
+      account_number: "", // Reset account_number
       shipping_type: "",
       shipping_cost: "",
       shipping_company: "",
-      shipping_carrier: "", // Reset shipping_carrier
-      shipping_notes: "", // Reset shipping_notes
+      shipping_carrier: "",
+      shipping_notes: "",
       notes: "",
     })
     setSelectedDepartment("")
@@ -367,7 +421,9 @@ export function OrdersCustomersManager() {
       customer_department: order.customer_department,
       customer_municipality: order.customer_municipality,
       payment_method: order.payment_method,
-      bank: (order as any).bank || "", // Initialize bank from order data
+      bank: (order as any).bank || "",
+      account_type: (order as any).account_type || "", // Added account_type to editing state
+      account_number: (order as any).account_number || "", // Added account_number to editing state
       order_status: order.order_status,
       delivery_status: order.delivery_status || "no",
       shipping_type: order.shipping_type, // Added shipping fields to editing state
@@ -386,30 +442,50 @@ export function OrdersCustomersManager() {
       return
     }
 
-    const { error } = await supabase
-      .from("orders")
-      .update({
-        customer_name: editingOrder.customer_name,
-        customer_phone: editingOrder.customer_phone,
-        customer_address: editingOrder.customer_address,
-        customer_department: editingOrder.customer_department,
-        customer_municipality: editingOrder.customer_municipality,
-        payment_method: editingOrder.payment_method,
-        bank: editingOrder.bank || null, // Update bank value
-        order_status: editingOrder.order_status,
-        delivery_status: editingOrder.delivery_status,
-        delivered: editingOrder.delivery_status === "yes",
-        shipping_type: editingOrder.shipping_type, // Added shipping fields to update
-        shipping_cost: editingOrder.shipping_cost,
-        shipping_carrier: editingOrder.shipping_carrier || null,
-        shipping_notes: editingOrder.shipping_notes || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", editingOrderId)
+    if (editingOrder.payment_method === "tarjeta" || editingOrder.payment_method === "banco") {
+      if (!editingOrder.account_type) {
+        alert("Por favor selecciona el tipo de cuenta (Corriente o Ahorros)")
+        return
+      }
+      if (!editingOrder.account_number) {
+        alert("Por favor ingresa el número de cuenta")
+        return
+      }
+    }
+
+    const updateData: any = {
+      customer_name: editingOrder.customer_name,
+      customer_phone: editingOrder.customer_phone,
+      customer_address: editingOrder.customer_address,
+      customer_department: editingOrder.customer_department,
+      customer_municipality: editingOrder.customer_municipality,
+      payment_method: editingOrder.payment_method,
+      bank: editingOrder.bank && editingOrder.bank.trim() !== "" ? editingOrder.bank : null,
+      account_type:
+        editingOrder.account_type && editingOrder.account_type.trim() !== "" ? editingOrder.account_type : null,
+      account_number:
+        editingOrder.account_number && editingOrder.account_number.trim() !== "" ? editingOrder.account_number : null,
+      order_status: editingOrder.order_status,
+      delivery_status: editingOrder.delivery_status,
+      delivered: editingOrder.delivery_status === "yes",
+      shipping_type: editingOrder.shipping_type,
+      shipping_cost: editingOrder.shipping_cost,
+      shipping_carrier:
+        editingOrder.shipping_carrier && editingOrder.shipping_carrier.trim() !== ""
+          ? editingOrder.shipping_carrier
+          : null,
+      shipping_notes:
+        editingOrder.shipping_notes && editingOrder.shipping_notes.trim() !== "" ? editingOrder.shipping_notes : null,
+      updated_at: new Date().toISOString(),
+    }
+
+    console.log("[v0] Updating order with data:", updateData)
+
+    const { error } = await supabase.from("orders").update(updateData).eq("id", editingOrderId)
 
     if (error) {
       console.error("Error updating order:", error)
-      alert("Error al actualizar el pedido")
+      alert(`Error al actualizar el pedido: ${error.message}`)
       return
     }
 
@@ -534,12 +610,42 @@ export function OrdersCustomersManager() {
   }
 
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
-    console.log("[v0] ===== INICIO ACTUALIZACIÓN DE ESTADO =====")
-    console.log("[v0] Order ID:", orderId)
-    console.log("[v0] New status:", newStatus)
-
     if (newStatus === "confirmed") {
       const order = orders.find((o) => o.id === orderId)
+
+      if (!order) {
+        alert("Error: No se encontró el pedido")
+        return
+      }
+
+      // Validate all required fields are filled
+      const missingFields: string[] = []
+
+      if (!order.customer_name) missingFields.push("Nombre del cliente")
+      if (!order.customer_phone) missingFields.push("Teléfono")
+      if (!order.customer_address) missingFields.push("Dirección")
+      if (!order.customer_department) missingFields.push("Departamento")
+      if (!order.customer_municipality) missingFields.push("Municipio")
+      if (!order.payment_method) missingFields.push("Método de pago")
+      if (!order.shipping_type) missingFields.push("Tipo de envío")
+
+      // Validate bank fields if payment method requires it
+      if (order.payment_method === "tarjeta" || order.payment_method === "banco") {
+        if (!(order as any).bank) missingFields.push("Banco")
+        if (!(order as any).account_type) missingFields.push("Tipo de cuenta")
+        if (!(order as any).account_number) missingFields.push("Número de cuenta")
+      }
+
+      if (missingFields.length > 0) {
+        alert(
+          `⚠️ No se puede confirmar el pedido. Los siguientes campos están vacíos:\n\n${missingFields.join("\n")}\n\nPor favor completa todos los campos antes de confirmar.`,
+        )
+        return
+      }
+
+      console.log("[v0] ===== INICIO ACTUALIZACIÓN DE ESTADO =====")
+      console.log("[v0] Order ID:", orderId)
+      console.log("[v0] New status:", newStatus)
       console.log("[v0] Order found:", order ? "YES" : "NO")
       console.log("[v0] Order products:", order?.products)
       console.log("[v0] Products length:", order?.products?.length || 0)
@@ -555,12 +661,15 @@ export function OrdersCustomersManager() {
           console.log("[v0]   - Product ID:", productId)
           console.log("[v0]   - Product name:", product.name)
           console.log("[v0]   - Quantity:", quantity)
+          console.log("[v0]   - Full product object:", JSON.stringify(product))
 
           if (!productId) {
             console.error("[v0] ERROR: Product ID is missing!")
             console.error("[v0] Product object:", JSON.stringify(product))
-            alert(`Error: No se encontró el ID del producto "${product.name}"`)
-            continue
+            alert(
+              `Error: No se encontró el ID del producto "${product.name}". Por favor verifica que el producto tenga un product_id válido.`,
+            )
+            return
           }
 
           const { data: currentProduct, error: fetchError } = await supabase
@@ -571,8 +680,10 @@ export function OrdersCustomersManager() {
 
           if (fetchError || !currentProduct) {
             console.error("[v0] Error fetching product:", fetchError)
-            alert(`Error al obtener información del producto ${product.name}`)
-            continue
+            alert(
+              `Error al obtener información del producto ${product.name}. Verifica que el producto exista en la base de datos.`,
+            )
+            return
           }
 
           console.log("[v0] Current product info:")
@@ -655,6 +766,17 @@ export function OrdersCustomersManager() {
             </CardTitle>
             <div className="flex gap-2 items-center">
               <Badge variant="secondary">{orders.length} pedidos totales</Badge>
+              {selectedOrders.length > 0 && (
+                <Button
+                  variant="destructive"
+                  onClick={() => setBulkDeleteDialogOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Eliminar seleccionados ({selectedOrders.length})
+                </Button>
+              )}
+              {/* </CHANGE> */}
               <Button
                 variant="outline"
                 onClick={handleExportToExcel}
@@ -780,8 +902,14 @@ export function OrdersCustomersManager() {
                           <Select
                             value={newOrder.payment_method}
                             onValueChange={(value) =>
-                              setNewOrder((prev) => ({ ...prev, payment_method: value, bank: "" }))
-                            } // Reset bank when payment method changes
+                              setNewOrder((prev) => ({
+                                ...prev,
+                                payment_method: value,
+                                bank: "",
+                                account_type: "",
+                                account_number: "",
+                              }))
+                            } // Reset bank, account_type and account_number when payment method changes
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Seleccionar método" />
@@ -815,6 +943,35 @@ export function OrdersCustomersManager() {
                             </Select>
                           </div>
                         )}
+                        {(newOrder.payment_method === "tarjeta" || newOrder.payment_method === "banco") &&
+                          newOrder.bank && (
+                            <>
+                              <div>
+                                <Label htmlFor="account_type">Tipo de Cuenta *</Label>
+                                <Select
+                                  value={newOrder.account_type}
+                                  onValueChange={(value) => setNewOrder((prev) => ({ ...prev, account_type: value }))}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Seleccionar tipo" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="corriente">Cuenta Corriente</SelectItem>
+                                    <SelectItem value="ahorros">Cuenta de Ahorros</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label htmlFor="account_number">Número de Cuenta *</Label>
+                                <Input
+                                  id="account_number"
+                                  value={newOrder.account_number}
+                                  onChange={(e) => setNewOrder((prev) => ({ ...prev, account_number: e.target.value }))}
+                                  placeholder="Ej: 1234567890"
+                                />
+                              </div>
+                            </>
+                          )}
                         <div>
                           <Label htmlFor="total_product_cost">Costo del Producto *</Label>
                           <Input
@@ -967,6 +1124,15 @@ export function OrdersCustomersManager() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectedOrders.length === filteredOrders.length && filteredOrders.length > 0}
+                        onChange={handleSelectAll}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                    </TableHead>
+                    {/* </CHANGE> */}
                     <TableHead>Cliente</TableHead>
                     <TableHead>Ubicación</TableHead>
                     <TableHead>Teléfono</TableHead>
@@ -985,6 +1151,16 @@ export function OrdersCustomersManager() {
 
                     return (
                       <TableRow key={order.id}>
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            checked={selectedOrders.includes(order.id)}
+                            onChange={() => handleSelectOrder(order.id)}
+                            className="h-4 w-4 rounded border-gray-300"
+                            disabled={isEditing}
+                          />
+                        </TableCell>
+                        {/* </CHANGE> */}
                         <TableCell className="font-medium">
                           {isEditing ? (
                             <Input
@@ -1088,7 +1264,13 @@ export function OrdersCustomersManager() {
                               <Select
                                 value={editingOrder.payment_method || ""}
                                 onValueChange={(value) =>
-                                  setEditingOrder((prev) => ({ ...prev, payment_method: value, bank: "" }))
+                                  setEditingOrder((prev) => ({
+                                    ...prev,
+                                    payment_method: value,
+                                    bank: "",
+                                    account_type: "",
+                                    account_number: "",
+                                  }))
                                 }
                               >
                                 <SelectTrigger className="text-xs">
@@ -1104,21 +1286,49 @@ export function OrdersCustomersManager() {
                               </Select>
                               {(editingOrder.payment_method === "tarjeta" ||
                                 editingOrder.payment_method === "banco") && (
-                                <Select
-                                  value={editingOrder.bank || ""}
-                                  onValueChange={(value) => setEditingOrder((prev) => ({ ...prev, bank: value }))}
-                                >
-                                  <SelectTrigger className="text-xs">
-                                    <SelectValue placeholder="Seleccionar banco" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {colombiaBanks.map((bank) => (
-                                      <SelectItem key={bank.value} value={bank.value}>
-                                        {bank.label}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                <>
+                                  <Select
+                                    value={editingOrder.bank || ""}
+                                    onValueChange={(value) => setEditingOrder((prev) => ({ ...prev, bank: value }))}
+                                  >
+                                    <SelectTrigger className="text-xs">
+                                      <SelectValue placeholder="Seleccionar banco" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {colombiaBanks.map((bank) => (
+                                        <SelectItem key={bank.value} value={bank.value}>
+                                          {bank.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  {editingOrder.bank && (
+                                    <>
+                                      <Select
+                                        value={editingOrder.account_type || ""}
+                                        onValueChange={(value) =>
+                                          setEditingOrder((prev) => ({ ...prev, account_type: value }))
+                                        }
+                                      >
+                                        <SelectTrigger className="text-xs">
+                                          <SelectValue placeholder="Tipo de cuenta" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="corriente">Corriente</SelectItem>
+                                          <SelectItem value="ahorros">Ahorros</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      <Input
+                                        value={editingOrder.account_number || ""}
+                                        onChange={(e) =>
+                                          setEditingOrder((prev) => ({ ...prev, account_number: e.target.value }))
+                                        }
+                                        placeholder="Número de cuenta"
+                                        className="text-xs"
+                                      />
+                                    </>
+                                  )}
+                                </>
                               )}
                             </div>
                           ) : (
@@ -1131,6 +1341,16 @@ export function OrdersCustomersManager() {
                                 <div className="text-xs text-muted-foreground">
                                   {colombiaBanks.find((b) => b.value === (order as any).bank)?.label ||
                                     (order as any).bank}
+                                </div>
+                              )}
+                              {(order as any).account_type && (
+                                <div className="text-xs text-muted-foreground">
+                                  {(order as any).account_type === "corriente" ? "Cta. Corriente" : "Cta. Ahorros"}
+                                </div>
+                              )}
+                              {(order as any).account_number && (
+                                <div className="text-xs text-muted-foreground font-mono">
+                                  {(order as any).account_number}
                                 </div>
                               )}
                             </div>
@@ -1412,6 +1632,18 @@ export function OrdersCustomersManager() {
                           (selectedOrder as any).bank}
                       </p>
                     )}
+                    {(selectedOrder as any).account_type && (
+                      <p>
+                        <span className="text-muted-foreground">Tipo de cuenta:</span>{" "}
+                        {(selectedOrder as any).account_type === "corriente" ? "Cuenta Corriente" : "Cuenta de Ahorros"}
+                      </p>
+                    )}
+                    {(selectedOrder as any).account_number && (
+                      <p>
+                        <span className="text-muted-foreground">Número de cuenta:</span>{" "}
+                        {(selectedOrder as any).account_number}
+                      </p>
+                    )}
                     <p>
                       <span className="text-muted-foreground">Tipo de envío:</span>{" "}
                       {shippingTypes.find((t) => t.value === selectedOrder.shipping_type)?.label ||
@@ -1523,6 +1755,15 @@ export function OrdersCustomersManager() {
         title="¿Eliminar este pedido?"
         description="Esta acción no se puede deshacer. El pedido será eliminado permanentemente de la base de datos."
       />
+
+      <DeleteConfirmDialog
+        open={bulkDeleteDialogOpen}
+        onOpenChange={setBulkDeleteDialogOpen}
+        onConfirm={handleBulkDelete}
+        title={`¿Eliminar ${selectedOrders.length} pedido${selectedOrders.length > 1 ? "s" : ""}?`}
+        description={`Esta acción no se puede deshacer. ${selectedOrders.length} pedido${selectedOrders.length > 1 ? "s serán eliminados" : " será eliminado"} permanentemente de la base de datos.`}
+      />
+      {/* </CHANGE> */}
     </>
   )
 }

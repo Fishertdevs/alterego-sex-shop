@@ -16,10 +16,19 @@ import { Plus, Edit, Trash2, Search, X, Upload, Percent, Video } from "lucide-re
 import Image from "next/image"
 import { convertImageToBase64, type AdminProduct } from "@/lib/admin-storage"
 import { categoriesData } from "@/data/products"
-import { put } from "@vercel/blob"
 import { createProduct, getProducts, convertSupabaseToAdmin } from "@/lib/supabase-storage"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { ProductPreview } from "./product-preview"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const categoryOptions = [
   { key: "juguetes-intimos", label: "Juguetes Íntimos" },
@@ -37,6 +46,8 @@ export function ProductManager() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [productToDelete, setProductToDelete] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -63,6 +74,7 @@ export function ProductManager() {
     videos: [] as string[], // Agregar soporte para videos
     featured: false,
     discount: "",
+    autoDeductStock: true,
   })
 
   const getSubcategories = (categoryKey: string) => {
@@ -184,6 +196,7 @@ export function ProductManager() {
       images: newProduct.images,
       videos: newProduct.videos,
       featured: newProduct.featured,
+      auto_deduct_stock: newProduct.autoDeductStock,
     }
 
     console.log("[v0] Product data to save:", productData)
@@ -213,6 +226,7 @@ export function ProductManager() {
       videos: [],
       featured: false,
       discount: "",
+      autoDeductStock: true,
     })
   }
 
@@ -240,6 +254,7 @@ export function ProductManager() {
           images: editingProduct.images,
           videos: editingProduct.videos,
           featured: editingProduct.featured,
+          auto_deduct_stock: editingProduct.autoDeductStock,
           updated_at: new Date().toISOString(),
         })
         .eq("id", editingProduct.id)
@@ -265,75 +280,69 @@ export function ProductManager() {
   }
 
   const handleDeleteProduct = async (id: string) => {
-    if (confirm("¿Estás seguro de que deseas eliminar este producto?")) {
-      try {
-        const supabase = createBrowserClient()
+    setProductToDelete(id)
+    setDeleteDialogOpen(true)
+  }
 
-        console.log("[v0] Deleting product:", id)
+  const confirmDelete = async () => {
+    if (!productToDelete) return
 
-        const { error } = await supabase.from("products").delete().eq("id", id)
+    try {
+      const supabase = createBrowserClient()
 
-        if (error) {
-          console.error("[v0] Error deleting product:", error)
-          alert("Error al eliminar el producto. Por favor intenta de nuevo.")
-          return
-        }
+      console.log("[v0] Deleting product:", productToDelete)
 
-        console.log("[v0] Product deleted successfully")
+      const { error } = await supabase.from("products").delete().eq("id", productToDelete)
 
-        // Recargar productos
-        const updatedProducts = await getProducts()
-        setProducts(updatedProducts.map(convertSupabaseToAdmin))
-      } catch (error) {
+      if (error) {
         console.error("[v0] Error deleting product:", error)
         alert("Error al eliminar el producto. Por favor intenta de nuevo.")
+        return
       }
+
+      console.log("[v0] Product deleted successfully")
+
+      // Recargar productos
+      const updatedProducts = await getProducts()
+      setProducts(updatedProducts.map(convertSupabaseToAdmin))
+    } catch (error) {
+      console.error("[v0] Error deleting product:", error)
+      alert("Error al eliminar el producto. Por favor intenta de nuevo.")
+    } finally {
+      setDeleteDialogOpen(false)
+      setProductToDelete(null)
     }
   }
 
   const [uploadingVideo, setUploadingVideo] = useState(false)
+  const [videoUrlInput, setVideoUrlInput] = useState("") // Nuevo estado para la URL del video
+
+  const handleAddVideoUrl = () => {
+    if (!videoUrlInput.trim()) {
+      alert("Por favor ingresa una URL válida")
+      return
+    }
+
+    // Validar que sea una URL válida
+    try {
+      new URL(videoUrlInput)
+    } catch {
+      alert("Por favor ingresa una URL válida (debe comenzar con http:// o https://)")
+      return
+    }
+
+    setNewProduct((prev) => ({
+      ...prev,
+      videos: [...prev.videos, videoUrlInput.trim()],
+    }))
+    setVideoUrlInput("")
+  }
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length === 0) return
-
-    setUploadingVideo(true)
-
-    try {
-      const videoUrls: string[] = []
-
-      for (const file of files) {
-        // Validar tamaño del archivo (máximo 50MB)
-        if (file.size > 50 * 1024 * 1024) {
-          alert(`El video ${file.name} es demasiado grande. Máximo 50MB.`)
-          continue
-        }
-
-        // Validar formato
-        const validFormats = ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo"]
-        if (!validFormats.includes(file.type)) {
-          alert(`El formato de ${file.name} no es válido. Usa MP4, WebM, MOV o AVI.`)
-          continue
-        }
-
-        // Subir a Vercel Blob
-        const blob = await put(`products/videos/${Date.now()}-${file.name}`, file, {
-          access: "public",
-        })
-
-        videoUrls.push(blob.url)
-      }
-
-      setNewProduct((prev) => ({
-        ...prev,
-        videos: [...prev.videos, ...videoUrls],
-      }))
-    } catch (error) {
-      console.error("[v0] Error uploading video:", error)
-      alert("Error al subir el video. Por favor intenta de nuevo.")
-    } finally {
-      setUploadingVideo(false)
-    }
+    alert(
+      "La subida directa de videos requiere que la aplicación esté desplegada en Vercel con el token BLOB_READ_WRITE_TOKEN configurado. Por favor, ingresa la URL del video manualmente o despliega la aplicación.",
+    )
+    e.target.value = ""
   }
 
   const handleRemoveVideo = (index: number) => {
@@ -398,6 +407,22 @@ export function ProductManager() {
                           }}
                         />
                       </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="auto-deduct-stock" className="text-sm font-medium">
+                          Descontar stock automáticamente
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          El stock se reducirá automáticamente cuando un pedido se marque como confirmado
+                        </p>
+                      </div>
+                      <Switch
+                        id="auto-deduct-stock"
+                        checked={newProduct.autoDeductStock}
+                        onCheckedChange={(checked) => setNewProduct((prev) => ({ ...prev, autoDeductStock: checked }))}
+                      />
                     </div>
 
                     <div>
@@ -546,29 +571,33 @@ export function ProductManager() {
                     <div>
                       <Label>Videos del Producto</Label>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Formatos aceptados: MP4, WebM, MOV, AVI (máximo 50MB por video)
+                        Ingresa la URL del video (YouTube, Vimeo, o video alojado en otro servicio)
                       </p>
                       <div className="mt-2 space-y-4">
                         <div className="flex items-center gap-2">
                           <Input
-                            type="file"
-                            accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
-                            multiple
-                            onChange={handleVideoUpload}
+                            type="url"
+                            placeholder="https://ejemplo.com/video.mp4"
+                            value={videoUrlInput}
+                            onChange={(e) => setVideoUrlInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault()
+                                handleAddVideoUrl()
+                              }
+                            }}
                             className="flex-1"
-                            id="video-upload"
-                            disabled={uploadingVideo}
                           />
-                          <Label
-                            htmlFor="video-upload"
-                            className={`cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 ${
-                              uploadingVideo ? "opacity-50 cursor-not-allowed" : ""
-                            }`}
-                          >
+                          <Button type="button" onClick={handleAddVideoUrl} variant="outline">
                             <Video className="h-4 w-4 mr-2" />
-                            {uploadingVideo ? "Subiendo..." : "Subir Videos"}
-                          </Label>
+                            Agregar URL
+                          </Button>
                         </div>
+                        <p className="text-xs text-muted-foreground">
+                          💡 Nota: La subida directa de videos requiere desplegar la aplicación en Vercel. Por ahora,
+                          puedes ingresar URLs de videos alojados en servicios externos.
+                        </p>
+                        {/* </CHANGE> */}
 
                         {newProduct.videos.length > 0 && (
                           <div className="grid grid-cols-2 gap-4">
@@ -800,6 +829,24 @@ export function ProductManager() {
                   </div>
                 </div>
 
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="edit-auto-deduct-stock" className="text-sm font-medium">
+                      Descontar stock automáticamente
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      El stock se reducirá automáticamente cuando un pedido se marque como confirmado
+                    </p>
+                  </div>
+                  <Switch
+                    id="edit-auto-deduct-stock"
+                    checked={editingProduct.autoDeductStock ?? true}
+                    onCheckedChange={(checked) =>
+                      setEditingProduct((prev) => (prev ? { ...prev, autoDeductStock: checked } : null))
+                    }
+                  />
+                </div>
+
                 <div>
                   <Label htmlFor="edit-discount">Descuento (%)</Label>
                   <div className="flex items-center gap-2">
@@ -988,60 +1035,57 @@ export function ProductManager() {
                 <div>
                   <Label>Videos del Producto</Label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Formatos aceptados: MP4, WebM, MOV, AVI (máximo 50MB por video)
+                    Ingresa la URL del video (YouTube, Vimeo, o video alojado en otro servicio)
                   </p>
                   <div className="mt-2 space-y-4">
                     <div className="flex items-center gap-2">
                       <Input
-                        type="file"
-                        accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
-                        multiple
-                        onChange={async (e) => {
-                          const files = Array.from(e.target.files || [])
-                          const newVideos: string[] = []
-
-                          for (const file of files) {
-                            try {
-                              // Validar tamaño del archivo (máximo 50MB)
-                              if (file.size > 50 * 1024 * 1024) {
-                                alert(`El video ${file.name} es demasiado grande. Máximo 50MB.`)
-                                continue
+                        type="url"
+                        placeholder="https://ejemplo.com/video.mp4"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            const input = e.target as HTMLInputElement
+                            const url = input.value.trim()
+                            if (url) {
+                              try {
+                                new URL(url)
+                                setEditingProduct((prev) => (prev ? { ...prev, videos: [...prev.videos, url] } : null))
+                                input.value = ""
+                              } catch {
+                                alert("Por favor ingresa una URL válida")
                               }
-
-                              // Validar formato
-                              const validFormats = ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo"]
-                              if (!validFormats.includes(file.type)) {
-                                alert(`El formato de ${file.name} no es válido. Usa MP4, WebM, MOV o AVI.`)
-                                continue
-                              }
-
-                              // Subir a Vercel Blob
-                              const blob = await put(`products/videos/${Date.now()}-${file.name}`, file, {
-                                access: "public",
-                              })
-
-                              newVideos.push(blob.url)
-                            } catch (error) {
-                              console.error("[v0] Error uploading video:", error)
-                              alert("Error al subir el video. Por favor intenta de nuevo.")
                             }
                           }
-
-                          setEditingProduct((prev) =>
-                            prev ? { ...prev, videos: [...prev.videos, ...newVideos] } : null,
-                          )
                         }}
                         className="flex-1"
-                        id="edit-video-upload"
                       />
-                      <Label
-                        htmlFor="edit-video-upload"
-                        className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                      <Button
+                        type="button"
+                        onClick={(e) => {
+                          const input = e.currentTarget.previousElementSibling as HTMLInputElement
+                          const url = input.value.trim()
+                          if (url) {
+                            try {
+                              new URL(url)
+                              setEditingProduct((prev) => (prev ? { ...prev, videos: [...prev.videos, url] } : null))
+                              input.value = ""
+                            } catch {
+                              alert("Por favor ingresa una URL válida")
+                            }
+                          }
+                        }}
+                        variant="outline"
                       >
                         <Video className="h-4 w-4 mr-2" />
-                        Agregar
-                      </Label>
+                        Agregar URL
+                      </Button>
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      💡 Nota: La subida directa de videos requiere desplegar la aplicación en Vercel. Por ahora, puedes
+                      ingresar URLs de videos alojados en servicios externos.
+                    </p>
+                    {/* </CHANGE> */}
 
                     {editingProduct.videos.length > 0 && (
                       <div className="grid grid-cols-2 gap-4">
@@ -1108,6 +1152,23 @@ export function ProductManager() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. El producto será eliminado permanentemente de la base de datos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setProductToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

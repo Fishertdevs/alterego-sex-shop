@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Star, Trash2, Check, X, AlertTriangle, MessageSquare } from "lucide-react"
-import { getReviews, deleteReview, updateReviewStatus } from "@/lib/supabase-storage"
+import { getReviews, updateReviewStatus } from "@/lib/supabase-storage"
 import type { SupabaseReview } from "@/lib/supabase-storage"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
@@ -27,6 +27,7 @@ type ReviewWithProduct = SupabaseReview & {
   product_name?: string
   review_type?: "pre_sale" | "post_sale"
   images?: string[]
+  source?: "reviews" | "service_surveys"
 }
 
 interface ServiceSurvey {
@@ -45,6 +46,8 @@ export function ReviewsManager() {
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "offensive">("all")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null)
+  const [selectedReviews, setSelectedReviews] = useState<string[]>([])
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
 
   useEffect(() => {
     loadReviews()
@@ -88,6 +91,11 @@ export function ReviewsManager() {
       console.log("[v0] Admin - Reviews loaded:", reviewsResult.length)
       console.log("[v0] Admin - Service surveys loaded:", surveysResult.data?.length || 0)
 
+      const productReviews: ReviewWithProduct[] = reviewsResult.map((review) => ({
+        ...review,
+        source: "reviews" as const,
+      }))
+
       const surveysAsReviews: ReviewWithProduct[] = (surveysResult.data || []).map((survey: ServiceSurvey) => ({
         id: survey.id,
         customer_name: survey.customer_name,
@@ -100,9 +108,10 @@ export function ReviewsManager() {
         approved: true,
         verified_purchase: false,
         is_offensive: false,
+        source: "service_surveys" as const,
       }))
 
-      const allReviews = [...reviewsResult, ...surveysAsReviews].sort(
+      const allReviews = [...productReviews, ...surveysAsReviews].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
       )
 
@@ -139,14 +148,93 @@ export function ReviewsManager() {
   const handleDelete = async () => {
     if (!selectedReviewId) return
 
-    const success = await deleteReview(selectedReviewId)
-    if (success) {
-      setReviews((prev) => prev.filter((r) => r.id !== selectedReviewId))
+    const reviewToDelete = reviews.find((r) => r.id === selectedReviewId)
+    if (!reviewToDelete) {
+      console.error("[v0] Review not found:", selectedReviewId)
+      alert("No se encontró la reseña a eliminar")
+      return
+    }
+
+    console.log("[v0] Deleting single review:", selectedReviewId, "from table:", reviewToDelete.source)
+
+    const supabase = createBrowserClient()
+
+    try {
+      if (reviewToDelete.source === "service_surveys") {
+        const { error } = await supabase.from("service_surveys").delete().eq("id", selectedReviewId)
+        if (error) {
+          console.error("[v0] Error deleting from service_surveys:", error)
+          alert(`Error al eliminar la reseña: ${error.message}`)
+          return
+        }
+      } else {
+        const { error } = await supabase.from("reviews").delete().eq("id", selectedReviewId)
+        if (error) {
+          console.error("[v0] Error deleting from reviews:", error)
+          alert(`Error al eliminar la reseña: ${error.message}`)
+          return
+        }
+      }
+
+      console.log("[v0] Review deleted successfully, reloading...")
+      await loadReviews()
       setDeleteDialogOpen(false)
       setSelectedReviewId(null)
-    } else {
-      alert("Error al eliminar la reseña")
+    } catch (error) {
+      console.error("[v0] Exception deleting review:", error)
+      alert("Error inesperado al eliminar la reseña")
     }
+  }
+
+  const handleSelectAll = () => {
+    if (selectedReviews.length === filteredReviews.length) {
+      setSelectedReviews([])
+    } else {
+      setSelectedReviews(filteredReviews.map((review) => review.id))
+    }
+  }
+
+  const handleSelectReview = (reviewId: string) => {
+    setSelectedReviews((prev) => (prev.includes(reviewId) ? prev.filter((id) => id !== reviewId) : [...prev, reviewId]))
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedReviews.length === 0) return
+
+    console.log("[v0] Bulk deleting reviews:", selectedReviews.length)
+
+    const supabase = createBrowserClient()
+
+    const reviewsToDelete = reviews.filter((r) => selectedReviews.includes(r.id))
+    const productReviewIds = reviewsToDelete.filter((r) => r.source === "reviews").map((r) => r.id)
+    const serviceSurveyIds = reviewsToDelete.filter((r) => r.source === "service_surveys").map((r) => r.id)
+
+    console.log("[v0] Product reviews to delete:", productReviewIds.length)
+    console.log("[v0] Service surveys to delete:", serviceSurveyIds.length)
+
+    const deletePromises = []
+
+    if (productReviewIds.length > 0) {
+      deletePromises.push(supabase.from("reviews").delete().in("id", productReviewIds))
+    }
+
+    if (serviceSurveyIds.length > 0) {
+      deletePromises.push(supabase.from("service_surveys").delete().in("id", serviceSurveyIds))
+    }
+
+    const results = await Promise.all(deletePromises)
+
+    const hasError = results.some((result) => result.error)
+    if (hasError) {
+      console.error("[v0] Error deleting reviews:", results)
+      alert("Error al eliminar algunas reseñas")
+      return
+    }
+
+    console.log("[v0] All reviews deleted successfully")
+    await loadReviews()
+    setSelectedReviews([])
+    setBulkDeleteDialogOpen(false)
   }
 
   const handleApprove = async (reviewId: string) => {
@@ -223,7 +311,6 @@ export function ReviewsManager() {
 
   return (
     <div className="space-y-6">
-      {/* Estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
@@ -271,7 +358,6 @@ export function ReviewsManager() {
         </Card>
       </div>
 
-      {/* Tabla de reseñas */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -279,17 +365,29 @@ export function ReviewsManager() {
               <Star className="h-5 w-5" />
               Gestión de Reseñas
             </CardTitle>
-            <Select value={filter} onValueChange={(value: any) => setFilter(value)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filtrar por..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas ({stats.total})</SelectItem>
-                <SelectItem value="pending">Pendientes ({stats.pending})</SelectItem>
-                <SelectItem value="approved">Aprobadas ({stats.approved})</SelectItem>
-                <SelectItem value="offensive">Ofensivas ({stats.offensive})</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2 items-center">
+              {selectedReviews.length > 0 && (
+                <Button
+                  variant="destructive"
+                  onClick={() => setBulkDeleteDialogOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Eliminar seleccionadas ({selectedReviews.length})
+                </Button>
+              )}
+              <Select value={filter} onValueChange={(value: any) => setFilter(value)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filtrar por..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas ({stats.total})</SelectItem>
+                  <SelectItem value="pending">Pendientes ({stats.pending})</SelectItem>
+                  <SelectItem value="approved">Aprobadas ({stats.approved})</SelectItem>
+                  <SelectItem value="offensive">Ofensivas ({stats.offensive})</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -303,6 +401,14 @@ export function ReviewsManager() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectedReviews.length === filteredReviews.length && filteredReviews.length > 0}
+                        onChange={handleSelectAll}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                    </TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Tipo/Producto</TableHead>
                     <TableHead>Calificación</TableHead>
@@ -315,6 +421,14 @@ export function ReviewsManager() {
                 <TableBody>
                   {filteredReviews.map((review) => (
                     <TableRow key={review.id}>
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selectedReviews.includes(review.id)}
+                          onChange={() => handleSelectReview(review.id)}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                      </TableCell>
                       <TableCell>
                         <div>
                           <p className="font-medium">{review.customer_name}</p>
@@ -414,7 +528,6 @@ export function ReviewsManager() {
         </CardContent>
       </Card>
 
-      {/* Diálogo de confirmación de eliminación */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -426,6 +539,27 @@ export function ReviewsManager() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              ¿Eliminar {selectedReviews.length} reseña{selectedReviews.length > 1 ? "s" : ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. {selectedReviews.length} reseña
+              {selectedReviews.length > 1 ? "s serán eliminadas" : " será eliminada"} permanentemente de la base de
+              datos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive hover:bg-destructive/90">
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
