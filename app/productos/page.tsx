@@ -114,7 +114,7 @@ export default function ProductosPage() {
       <section className="pt-24 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 animate-fade-in-up">
-            <h1 className="text-4xl md:text-6xl font-serif font-bold text-foreground mb-6 text-balance">
+            <h1 className="text-4xl font-serif font-bold text-foreground mb-6 text-balance md:text-8xl">
               Nuestros <span className="text-accent">Productos</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto text-pretty">
