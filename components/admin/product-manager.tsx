@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Plus, Edit, Trash2, Search, X, Upload, Percent, Video } from "lucide-react"
+import { Plus, Edit, Trash2, Search, X, Upload, Percent } from "lucide-react"
 import Image from "next/image"
 import { convertImageToBase64, type AdminProduct } from "@/lib/admin-storage"
 import { categoriesData } from "@/data/products"
@@ -71,7 +71,6 @@ export function ProductManager() {
     description: "",
     stock: "",
     images: [] as string[],
-    videos: [] as string[], // Agregar soporte para videos
     featured: false,
     discount: "",
     autoDeductStock: true,
@@ -163,8 +162,8 @@ export function ProductManager() {
       return
     }
 
-    if (newProduct.images.length === 0 && newProduct.videos.length === 0) {
-      alert("Por favor agrega al menos una imagen o un video del producto")
+    if (newProduct.images.length === 0) {
+      alert("Por favor agrega al menos una imagen del producto")
       return
     }
 
@@ -176,7 +175,6 @@ export function ProductManager() {
       stock: newProduct.stock,
       discount: newProduct.discount,
       images: newProduct.images.length,
-      videos: newProduct.videos.length,
     })
 
     const price = parseFormattedNumber(newProduct.price)
@@ -194,7 +192,6 @@ export function ProductManager() {
       subcategory: newProduct.subcategory || undefined,
       stock: parseFormattedNumber(newProduct.stock),
       images: newProduct.images,
-      videos: newProduct.videos,
       featured: newProduct.featured,
       auto_deduct_stock: newProduct.autoDeductStock,
     }
@@ -223,7 +220,6 @@ export function ProductManager() {
       description: "",
       stock: "",
       images: [],
-      videos: [],
       featured: false,
       discount: "",
       autoDeductStock: true,
@@ -252,7 +248,6 @@ export function ProductManager() {
           subcategory: editingProduct.subcategory,
           stock: editingProduct.stock,
           images: editingProduct.images,
-          videos: editingProduct.videos,
           featured: editingProduct.featured,
           auto_deduct_stock: editingProduct.autoDeductStock,
           updated_at: new Date().toISOString(),
@@ -312,44 +307,6 @@ export function ProductManager() {
       setDeleteDialogOpen(false)
       setProductToDelete(null)
     }
-  }
-
-  const [uploadingVideo, setUploadingVideo] = useState(false)
-  const [videoUrlInput, setVideoUrlInput] = useState("") // Nuevo estado para la URL del video
-
-  const handleAddVideoUrl = () => {
-    if (!videoUrlInput.trim()) {
-      alert("Por favor ingresa una URL válida")
-      return
-    }
-
-    // Validar que sea una URL válida
-    try {
-      new URL(videoUrlInput)
-    } catch {
-      alert("Por favor ingresa una URL válida (debe comenzar con http:// o https://)")
-      return
-    }
-
-    setNewProduct((prev) => ({
-      ...prev,
-      videos: [...prev.videos, videoUrlInput.trim()],
-    }))
-    setVideoUrlInput("")
-  }
-
-  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    alert(
-      "La subida directa de videos requiere que la aplicación esté desplegada en Vercel con el token BLOB_READ_WRITE_TOKEN configurado. Por favor, ingresa la URL del video manualmente o despliega la aplicación.",
-    )
-    e.target.value = ""
-  }
-
-  const handleRemoveVideo = (index: number) => {
-    setNewProduct((prev) => ({
-      ...prev,
-      videos: prev.videos.filter((_, i) => i !== index),
-    }))
   }
 
   return (
@@ -568,63 +525,6 @@ export function ProductManager() {
                       </div>
                     </div>
 
-                    <div>
-                      <Label>Videos del Producto</Label>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Ingresa la URL del video (YouTube, Vimeo, o video alojado en otro servicio)
-                      </p>
-                      <div className="mt-2 space-y-4">
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="url"
-                            placeholder="https://ejemplo.com/video.mp4"
-                            value={videoUrlInput}
-                            onChange={(e) => setVideoUrlInput(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault()
-                                handleAddVideoUrl()
-                              }
-                            }}
-                            className="flex-1"
-                          />
-                          <Button type="button" onClick={handleAddVideoUrl} variant="outline">
-                            <Video className="h-4 w-4 mr-2" />
-                            Agregar URL
-                          </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          💡 Nota: La subida directa de videos requiere desplegar la aplicación en Vercel. Por ahora,
-                          puedes ingresar URLs de videos alojados en servicios externos.
-                        </p>
-                        {/* </CHANGE> */}
-
-                        {newProduct.videos.length > 0 && (
-                          <div className="grid grid-cols-2 gap-4">
-                            {newProduct.videos.map((videoUrl, index) => (
-                              <div
-                                key={index}
-                                className="relative aspect-video rounded-lg overflow-hidden group bg-black"
-                              >
-                                <video
-                                  src={videoUrl}
-                                  controls
-                                  className="w-full h-full object-contain"
-                                  preload="metadata"
-                                />
-                                <button
-                                  onClick={() => handleRemoveVideo(index)}
-                                  className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                >
-                                  <X className="h-4 w-4" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
                     <div className="flex items-center space-x-2">
                       <Switch
                         id="featured"
@@ -633,8 +533,8 @@ export function ProductManager() {
                       />
                       <Label htmlFor="featured">Producto Destacado</Label>
                     </div>
-                    <Button onClick={handleAddProduct} className="w-full" disabled={uploadingVideo}>
-                      {uploadingVideo ? "Subiendo videos..." : "Agregar Producto"}
+                    <Button onClick={handleAddProduct} className="w-full">
+                      Agregar Producto
                     </Button>
                   </div>
 
@@ -1022,88 +922,6 @@ export function ProductManager() {
                                 )
                               }
                               className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Videos del Producto</Label>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Ingresa la URL del video (YouTube, Vimeo, o video alojado en otro servicio)
-                  </p>
-                  <div className="mt-2 space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="url"
-                        placeholder="https://ejemplo.com/video.mp4"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault()
-                            const input = e.target as HTMLInputElement
-                            const url = input.value.trim()
-                            if (url) {
-                              try {
-                                new URL(url)
-                                setEditingProduct((prev) => (prev ? { ...prev, videos: [...prev.videos, url] } : null))
-                                input.value = ""
-                              } catch {
-                                alert("Por favor ingresa una URL válida")
-                              }
-                            }
-                          }
-                        }}
-                        className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        onClick={(e) => {
-                          const input = e.currentTarget.previousElementSibling as HTMLInputElement
-                          const url = input.value.trim()
-                          if (url) {
-                            try {
-                              new URL(url)
-                              setEditingProduct((prev) => (prev ? { ...prev, videos: [...prev.videos, url] } : null))
-                              input.value = ""
-                            } catch {
-                              alert("Por favor ingresa una URL válida")
-                            }
-                          }
-                        }}
-                        variant="outline"
-                      >
-                        <Video className="h-4 w-4 mr-2" />
-                        Agregar URL
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      💡 Nota: La subida directa de videos requiere desplegar la aplicación en Vercel. Por ahora, puedes
-                      ingresar URLs de videos alojados en servicios externos.
-                    </p>
-                    {/* </CHANGE> */}
-
-                    {editingProduct.videos.length > 0 && (
-                      <div className="grid grid-cols-2 gap-4">
-                        {editingProduct.videos.map((videoUrl, index) => (
-                          <div key={index} className="relative aspect-video rounded-lg overflow-hidden group bg-black">
-                            <video
-                              src={videoUrl}
-                              controls
-                              className="w-full h-full object-contain"
-                              preload="metadata"
-                            />
-                            <button
-                              onClick={() =>
-                                setEditingProduct((prev) =>
-                                  prev ? { ...prev, videos: prev.videos.filter((_, i) => i !== index) } : null,
-                                )
-                              }
-                              className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
                             >
                               <X className="h-4 w-4" />
                             </button>

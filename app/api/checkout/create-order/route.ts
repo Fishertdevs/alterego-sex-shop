@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase-server"
+import { createServerSupabaseClient } from "@/lib/supabase/server"
 
 export async function POST(request: Request) {
   try {
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Datos incompletos" }, { status: 400 })
     }
 
-    const supabase = await createServerClient()
+    const supabase = await createServerSupabaseClient()
 
     // Verificar stock disponible para cada producto
     for (const item of items) {
