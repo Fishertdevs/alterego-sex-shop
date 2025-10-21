@@ -64,7 +64,7 @@ export default function ContactoPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 animate-fade-in-up">
             <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 text-balance">
-              <span className="text-accent text-8xl">Contacto</span>
+              <span className="text-accent text-6xl py-9">Contacto</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto text-pretty">
               Estamos aquí para ayudarte. Contáctanos a través de nuestras redes sociales para cualquier consulta,
