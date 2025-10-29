@@ -174,9 +174,11 @@ export function ProductCard({ product }: ProductCardProps) {
                 <div className="text-xs text-muted-foreground">Total: ${totalPrice.toLocaleString("es-CO")} COP</div>
               )}
             </div>
-            <Badge variant={product.stock > 10 ? "default" : product.stock > 0 ? "secondary" : "destructive"}>
-              {product.stock > 0 ? `Stock: ${product.stock}` : "Agotado"}
-            </Badge>
+            {user?.role === "admin" && (
+              <Badge variant={product.stock > 10 ? "default" : product.stock > 0 ? "secondary" : "destructive"}>
+                {product.stock > 0 ? `Stock: ${product.stock}` : "Agotado"}
+              </Badge>
+            )}
           </div>
 
           {product.stock > 0 && (

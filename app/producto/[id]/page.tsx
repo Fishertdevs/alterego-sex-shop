@@ -228,12 +228,6 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
               </div>
               <Card>
                 <CardContent className="p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Disponibilidad:</span>
-                    <Badge variant={product.stock > 10 ? "default" : product.stock > 0 ? "secondary" : "destructive"}>
-                      {product.stock > 0 ? `${product.stock} unidades` : "Agotado"}
-                    </Badge>
-                  </div>
                   {product.stock > 0 && (
                     <>
                       <div className="space-y-2">

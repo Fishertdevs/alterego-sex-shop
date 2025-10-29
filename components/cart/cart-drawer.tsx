@@ -173,7 +173,6 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                         <div className="flex-1 min-w-0">
                           <h3 className="text-sm font-medium text-foreground truncate font-serif">{item.name}</h3>
                           <p className="text-sm text-muted-foreground">${item.price.toLocaleString("es-CO")} COP</p>
-                          <p className="text-xs text-muted-foreground">Stock: {item.stock}</p>
                         </div>
                         <div className="flex items-center space-x-2">
                           <Button
