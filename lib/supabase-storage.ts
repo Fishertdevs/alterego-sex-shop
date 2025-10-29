@@ -41,6 +41,46 @@ export function convertSupabaseToAdmin(product: SupabaseProduct): AdminProduct {
   }
 }
 
+export async function getProducts(options?: {
+  category?: string
+  subcategory?: string
+  featured?: boolean
+  limit?: number
+}): Promise<SupabaseProduct[]> {
+  const supabase = getSupabaseClient()
+
+  console.log("[v0] getProducts called with options:", options)
+
+  let query = supabase.from("products").select("*").eq("active", true) // Solo productos activos
+
+  if (options?.category) {
+    query = query.eq("category", options.category)
+  }
+
+  if (options?.subcategory) {
+    query = query.eq("subcategory", options.subcategory)
+  }
+
+  if (options?.featured !== undefined) {
+    query = query.eq("featured", options.featured)
+  }
+
+  const limit = options?.limit ?? 100
+  query = query.limit(limit)
+
+  query = query.order("created_at", { ascending: false })
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error("[v0] Error fetching products:", error)
+    return []
+  }
+
+  console.log("[v0] Products fetched successfully:", data?.length || 0)
+  return data || []
+}
+
 export async function getFeaturedProducts(): Promise<SupabaseProduct[]> {
   const supabase = getSupabaseClient()
   const { data, error } = await supabase
@@ -82,18 +122,6 @@ export function convertSupabaseToProduct(product: SupabaseProduct): {
     stock: product.stock,
     featured: product.featured,
   }
-}
-
-export async function getProducts(): Promise<SupabaseProduct[]> {
-  const supabase = getSupabaseClient()
-  const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false })
-
-  if (error) {
-    console.error("[v0] Error fetching products:", error)
-    return []
-  }
-
-  return data || []
 }
 
 export async function getProductById(id: string): Promise<SupabaseProduct | null> {

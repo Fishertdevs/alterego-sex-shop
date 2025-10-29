@@ -3,13 +3,11 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FileDown } from "lucide-react"
+import { FileDown, AlertCircle } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase/client"
 // @ts-ignore
 import * as XLSX from "xlsx"
 import {
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -21,6 +19,7 @@ import {
   Pie,
   Cell,
 } from "recharts"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface DashboardData {
   totalRevenue: number
@@ -45,6 +44,7 @@ export function DashboardStats() {
     topProducts: [],
   })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const supabase = createBrowserClient()
 
@@ -54,24 +54,45 @@ export function DashboardStats() {
 
   const loadDashboardData = async () => {
     try {
-      // Cargar pedidos confirmados (solo estos cuentan para las gráficas)
+      setError(null)
+
+      const threeMonthsAgo = new Date()
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+      const dateFilter = threeMonthsAgo.toISOString()
+
+      console.log("[v0] Loading dashboard data from:", dateFilter)
+
       const { data: orders, error: ordersError } = await supabase
         .from("orders")
-        .select("*")
+        .select("id, created_at, total_product_cost, shipping_cost, customer_email, customer_phone, delivery_status")
         .eq("order_status", "confirmed")
+        .gte("created_at", dateFilter)
+        .order("created_at", { ascending: false })
+        .limit(100)
 
-      if (ordersError) throw ordersError
+      if (ordersError) {
+        console.error("[v0] Error loading orders:", ordersError)
+        throw ordersError
+      }
 
-      // Cargar productos
-      const { data: products, error: productsError } = await supabase.from("products").select("*")
+      console.log("[v0] Orders loaded:", orders?.length || 0)
 
-      if (productsError) throw productsError
+      const { count: productsCount, error: productsError } = await supabase
+        .from("products")
+        .select("*", { count: "exact", head: true })
 
-      // Calcular estadísticas
+      if (productsError) {
+        console.error("[v0] Error loading products count:", productsError)
+        throw productsError
+      }
+
+      console.log("[v0] Products count:", productsCount || 0)
+
+      // Calcular estadísticas básicas
       const totalRevenue =
         orders?.reduce((sum, order) => sum + (order.total_product_cost + order.shipping_cost), 0) || 0
       const totalOrders = orders?.length || 0
-      const totalProducts = products?.length || 0
+      const totalProducts = productsCount || 0
 
       // Obtener clientes únicos
       const uniqueCustomers = new Set(orders?.map((order) => order.customer_email || order.customer_phone))
@@ -83,8 +104,7 @@ export function DashboardStats() {
       // Pedidos por estado
       const ordersByStatus = calculateOrdersByStatus(orders || [])
 
-      // Top productos
-      const topProducts = calculateTopProducts(orders || [])
+      console.log("[v0] Dashboard data loaded successfully")
 
       setData({
         totalRevenue,
@@ -93,10 +113,11 @@ export function DashboardStats() {
         totalCustomers,
         revenueByMonth,
         ordersByStatus,
-        topProducts,
+        topProducts: [], // Deshabilitado temporalmente para evitar timeout
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading dashboard data:", error)
+      setError(error.message || "Error al cargar las estadísticas")
     } finally {
       setLoading(false)
     }
@@ -122,7 +143,6 @@ export function DashboardStats() {
         revenue,
       }))
       .sort((a, b) => a.month.localeCompare(b.month))
-      .slice(-6) // Últimos 6 meses
   }
 
   const calculateOrdersByStatus = (orders: any[]) => {
@@ -149,33 +169,13 @@ export function DashboardStats() {
     }))
   }
 
-  const calculateTopProducts = (orders: any[]) => {
-    const productSales: Record<string, { name: string; sales: number }> = {}
-
-    orders.forEach((order) => {
-      if (order.products && Array.isArray(order.products)) {
-        order.products.forEach((product: any) => {
-          if (!productSales[product.id]) {
-            productSales[product.id] = { name: product.name, sales: 0 }
-          }
-          productSales[product.id].sales += product.quantity
-        })
-      }
-    })
-
-    return Object.values(productSales)
-      .sort((a, b) => b.sales - a.sales)
-      .slice(0, 5)
-  }
-
   const handleExportToExcel = () => {
     try {
       console.log("[v0] Starting dashboard export to Excel...")
 
-      // Crear hojas de datos
       const summaryData = [
-        { Métrica: "Ingresos Totales", Valor: `$${data.totalRevenue.toLocaleString("es-CO")} COP` },
-        { Métrica: "Total Pedidos", Valor: data.totalOrders },
+        { Métrica: "Ingresos Totales (últimos 3 meses)", Valor: `$${data.totalRevenue.toLocaleString("es-CO")} COP` },
+        { Métrica: "Total Pedidos (últimos 3 meses)", Valor: data.totalOrders },
         { Métrica: "Total Productos", Valor: data.totalProducts },
         { Métrica: "Total Clientes", Valor: data.totalCustomers },
       ]
@@ -190,15 +190,8 @@ export function DashboardStats() {
         Cantidad: item.count,
       }))
 
-      const productsData = data.topProducts.map((item) => ({
-        Producto: item.name,
-        Ventas: item.sales,
-      }))
-
-      // Crear workbook
       const workbook = XLSX.utils.book_new()
 
-      // Agregar hojas
       const summarySheet = XLSX.utils.json_to_sheet(summaryData)
       XLSX.utils.book_append_sheet(workbook, summarySheet, "Resumen")
 
@@ -208,10 +201,6 @@ export function DashboardStats() {
       const statusSheet = XLSX.utils.json_to_sheet(statusData)
       XLSX.utils.book_append_sheet(workbook, statusSheet, "Pedidos por Estado")
 
-      const productsSheet = XLSX.utils.json_to_sheet(productsData)
-      XLSX.utils.book_append_sheet(workbook, productsSheet, "Top Productos")
-
-      // Generar archivo
       const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" })
       const blob = new Blob([excelBuffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -244,9 +233,35 @@ export function DashboardStats() {
     return <div className="text-center py-8">Cargando estadísticas...</div>
   }
 
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>Error al cargar las estadísticas: {error}</AlertDescription>
+        </Alert>
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Recomendación:</strong> Si tienes muchos pedidos en la base de datos, considera crear índices en las
+            columnas <code>order_status</code> y <code>created_at</code> de la tabla <code>orders</code> en Supabase
+            para mejorar el rendimiento.
+          </AlertDescription>
+        </Alert>
+        <Button onClick={loadDashboardData}>Reintentar</Button>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
-      {/* Header con botón de exportar */}
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Mostrando estadísticas de los últimos 3 meses (máximo 100 pedidos) para optimizar el rendimiento.
+        </AlertDescription>
+      </Alert>
+
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Estadísticas del Dashboard</h2>
         <Button onClick={handleExportToExcel} variant="outline" className="flex items-center gap-2 bg-transparent">
@@ -255,7 +270,6 @@ export function DashboardStats() {
         </Button>
       </div>
 
-      {/* Tarjetas de resumen */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader>
@@ -263,7 +277,7 @@ export function DashboardStats() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-accent">{formatCurrency(data.totalRevenue)}</div>
-            <p className="text-xs text-muted-foreground mt-1">De pedidos confirmados</p>
+            <p className="text-xs text-muted-foreground mt-1">Últimos 3 meses</p>
           </CardContent>
         </Card>
 
@@ -273,7 +287,7 @@ export function DashboardStats() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.totalOrders}</div>
-            <p className="text-xs text-muted-foreground mt-1">Pedidos confirmados</p>
+            <p className="text-xs text-muted-foreground mt-1">Últimos 3 meses</p>
           </CardContent>
         </Card>
 
@@ -293,74 +307,65 @@ export function DashboardStats() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.totalCustomers}</div>
-            <p className="text-xs text-muted-foreground mt-1">Clientes únicos</p>
+            <p className="text-xs text-muted-foreground mt-1">Últimos 3 meses</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Gráficas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Ingresos por mes */}
         <Card>
           <CardHeader>
             <CardTitle>Ingresos por Mes</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={data.revenueByMonth}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                <Line type="monotone" dataKey="revenue" stroke="#FF6B9D" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
+            {data.revenueByMonth.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={data.revenueByMonth}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Line type="monotone" dataKey="revenue" stroke="#FF6B9D" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No hay datos disponibles
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Pedidos por estado */}
         <Card>
           <CardHeader>
             <CardTitle>Pedidos por Estado de Entrega</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={data.ordersByStatus}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ status, count }) => `${status}: ${count}`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="count"
-                >
-                  {data.ordersByStatus.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Top productos */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Top 5 Productos Más Vendidos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={data.topProducts}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="sales" fill="#C147E9" />
-              </BarChart>
-            </ResponsiveContainer>
+            {data.ordersByStatus.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={data.ordersByStatus}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ status, count }) => `${status}: ${count}`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="count"
+                  >
+                    {data.ordersByStatus.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No hay datos disponibles
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

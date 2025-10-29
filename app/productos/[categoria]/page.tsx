@@ -119,11 +119,12 @@ export default function CategoryPage({ params }: { params: { categoria: string }
     async function loadProducts() {
       setLoading(true)
       console.log("[v0] Loading products from Supabase for category:", params.categoria)
-      const allProducts = await getProducts()
-      console.log("[v0] All products loaded:", allProducts.length)
 
-      // Filtrar por categoría
-      const categoryProducts = allProducts.filter((p) => p.category === params.categoria)
+      const categoryProducts = await getProducts({
+        category: params.categoria,
+        limit: 200, // Límite razonable para una categoría
+      })
+
       console.log("[v0] Products for category:", categoryProducts.length)
 
       setProducts(categoryProducts)
@@ -141,19 +142,17 @@ export default function CategoryPage({ params }: { params: { categoria: string }
       .on(
         "postgres_changes",
         {
-          event: "*", // Escuchar todos los eventos: INSERT, UPDATE, DELETE
+          event: "*",
           schema: "public",
           table: "products",
         },
         (payload) => {
           console.log("[v0] Product change detected:", payload)
-          // Recargar productos cuando haya cambios
           loadProducts()
         },
       )
       .subscribe()
 
-    // Cleanup: desuscribirse cuando el componente se desmonte
     return () => {
       console.log("[v0] Cleaning up Realtime subscription")
       supabase.removeChannel(channel)
