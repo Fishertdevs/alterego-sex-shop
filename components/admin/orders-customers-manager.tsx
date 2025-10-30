@@ -85,7 +85,6 @@ export function OrdersCustomersManager() {
 
   const [selectedOrders, setSelectedOrders] = useState<string[]>([])
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
-  // </CHANGE>
 
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null)
   const [editingOrder, setEditingOrder] = useState<
@@ -366,7 +365,6 @@ export function OrdersCustomersManager() {
     setSelectedOrders([])
     setBulkDeleteDialogOpen(false)
   }
-  // </CHANGE>
 
   const confirmDeleteOrder = async () => {
     if (!orderToDelete) return
@@ -776,7 +774,6 @@ export function OrdersCustomersManager() {
                   Eliminar seleccionados ({selectedOrders.length})
                 </Button>
               )}
-              {/* </CHANGE> */}
               <Button
                 variant="outline"
                 onClick={handleExportToExcel}
@@ -1132,7 +1129,6 @@ export function OrdersCustomersManager() {
                         className="h-4 w-4 rounded border-gray-300"
                       />
                     </TableHead>
-                    {/* </CHANGE> */}
                     <TableHead>Cliente</TableHead>
                     <TableHead>Ubicación</TableHead>
                     <TableHead>Teléfono</TableHead>
@@ -1160,7 +1156,6 @@ export function OrdersCustomersManager() {
                             disabled={isEditing}
                           />
                         </TableCell>
-                        {/* </CHANGE> */}
                         <TableCell className="font-medium">
                           {isEditing ? (
                             <Input
@@ -1763,7 +1758,6 @@ export function OrdersCustomersManager() {
         title={`¿Eliminar ${selectedOrders.length} pedido${selectedOrders.length > 1 ? "s" : ""}?`}
         description={`Esta acción no se puede deshacer. ${selectedOrders.length} pedido${selectedOrders.length > 1 ? "s serán eliminados" : " será eliminado"} permanentemente de la base de datos.`}
       />
-      {/* </CHANGE> */}
     </>
   )
 }
