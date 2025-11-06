@@ -3,12 +3,13 @@
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CreditCard, Building2, CheckCircle2 } from "lucide-react"
-import { CardPayment, type CardPaymentData } from "@/components/checkout/card-payment"
-import { PSEPayment, type PSEPaymentData } from "@/components/checkout/pse-payment"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { CheckCircle2 } from "lucide-react"
 import { savePaymentMethod } from "@/lib/payments"
 import { useAuth } from "@/contexts/auth-context"
+import { colombianBanks } from "@/lib/colombia-data"
 
 interface AddPaymentMethodDialogProps {
   isOpen: boolean
@@ -18,134 +19,85 @@ interface AddPaymentMethodDialogProps {
 
 export function AddPaymentMethodDialog({ isOpen, onClose, onSuccess }: AddPaymentMethodDialogProps) {
   const { user } = useAuth()
-  const [selectedMethod, setSelectedMethod] = useState<"card" | "pse">("card")
-  const [cardData, setCardData] = useState<CardPaymentData | null>(null)
-  const [pseData, setPSEData] = useState<PSEPaymentData | null>(null)
+  const [selectedMethod, setSelectedMethod] = useState<"nequi" | "daviplata" | "bre-b">("nequi")
+  const [phoneNumber, setPhoneNumber] = useState("")
+  const [breBKey, setBreBKey] = useState("")
+  const [breBBank, setBreBBank] = useState("")
   const [errors, setErrors] = useState<string[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
 
-  const validateCardPayment = (): boolean => {
+  const validatePayment = (): boolean => {
     const newErrors: string[] = []
 
-    if (!cardData?.cardNumber || cardData.cardNumber.replace(/\s/g, "").length < 13) {
-      newErrors.push("Número de tarjeta inválido")
-    }
-
-    if (!cardData?.cardName || cardData.cardName.trim().length < 3) {
-      newErrors.push("Nombre en la tarjeta es requerido")
-    }
-
-    if (!cardData?.expiryDate || !/^\d{2}\/\d{2}$/.test(cardData.expiryDate)) {
-      newErrors.push("Fecha de vencimiento inválida")
-    }
-
-    if (!cardData?.cvv || cardData.cvv.length < 3) {
-      newErrors.push("CVV inválido")
+    if (selectedMethod === "nequi" || selectedMethod === "daviplata") {
+      if (!phoneNumber || phoneNumber.length < 10) {
+        newErrors.push("Número de teléfono inválido (mínimo 10 dígitos)")
+      }
+    } else if (selectedMethod === "bre-b") {
+      if (!breBKey || breBKey.trim().length < 5) {
+        newErrors.push("La llave de Bre-B es requerida")
+      }
+      if (!breBBank) {
+        newErrors.push("Debes seleccionar un banco")
+      }
     }
 
     setErrors(newErrors)
     return newErrors.length === 0
-  }
-
-  const validatePSEPayment = (): boolean => {
-    const newErrors: string[] = []
-
-    if (!pseData?.bank) {
-      newErrors.push("Debes seleccionar un banco")
-    }
-
-    if (!pseData?.personType) {
-      newErrors.push("Debes seleccionar el tipo de persona")
-    }
-
-    if (!pseData?.documentType) {
-      newErrors.push("Debes seleccionar el tipo de documento")
-    }
-
-    if (!pseData?.documentNumber || pseData.documentNumber.length < 5) {
-      newErrors.push("Número de documento inválido")
-    }
-
-    setErrors(newErrors)
-    return newErrors.length === 0
-  }
-
-  const getCardBrand = (number: string): string => {
-    const cleaned = number.replace(/\s/g, "")
-    if (/^4/.test(cleaned)) return "Visa"
-    if (/^5[1-5]/.test(cleaned)) return "Mastercard"
-    if (/^3[47]/.test(cleaned)) return "American Express"
-    return "Tarjeta"
   }
 
   const handleSave = async () => {
     if (!user) return
 
-    let isValid = false
+    const isValid = validatePayment()
+    if (!isValid) return
 
-    if (selectedMethod === "card") {
-      isValid = validateCardPayment()
-      if (isValid && cardData) {
-        setIsProcessing(true)
+    setIsProcessing(true)
 
-        // Simular verificación de tarjeta
-        await new Promise((resolve) => setTimeout(resolve, 1500))
+    // Simular verificación
+    await new Promise((resolve) => setTimeout(resolve, 1500))
 
-        const last4 = cardData.cardNumber.replace(/\s/g, "").slice(-4)
-        const brand = getCardBrand(cardData.cardNumber)
+    let methodName = ""
+    let methodDetails = ""
 
-        savePaymentMethod({
-          userId: user.id,
-          type: "card",
-          last4,
-          brand,
-          isDefault: false,
-        })
-
-        setIsProcessing(false)
-        setShowSuccess(true)
-
-        setTimeout(() => {
-          setShowSuccess(false)
-          onSuccess()
-          onClose()
-          resetForm()
-        }, 2000)
-      }
+    if (selectedMethod === "nequi") {
+      methodName = "Nequi"
+      methodDetails = phoneNumber
+    } else if (selectedMethod === "daviplata") {
+      methodName = "Daviplata"
+      methodDetails = phoneNumber
     } else {
-      isValid = validatePSEPayment()
-      if (isValid && pseData) {
-        setIsProcessing(true)
-
-        // Simular verificación de cuenta PSE
-        await new Promise((resolve) => setTimeout(resolve, 1500))
-
-        savePaymentMethod({
-          userId: user.id,
-          type: "pse",
-          bankName: pseData.bank,
-          isDefault: false,
-        })
-
-        setIsProcessing(false)
-        setShowSuccess(true)
-
-        setTimeout(() => {
-          setShowSuccess(false)
-          onSuccess()
-          onClose()
-          resetForm()
-        }, 2000)
-      }
+      methodName = "Bre-B"
+      methodDetails = `${breBBank} - ${breBKey}`
     }
+
+    savePaymentMethod({
+      userId: user.id,
+      type: selectedMethod as any,
+      last4: methodDetails.slice(-4),
+      brand: methodName,
+      bankName: selectedMethod === "bre-b" ? breBBank : undefined,
+      isDefault: false,
+    })
+
+    setIsProcessing(false)
+    setShowSuccess(true)
+
+    setTimeout(() => {
+      setShowSuccess(false)
+      onSuccess()
+      onClose()
+      resetForm()
+    }, 2000)
   }
 
   const resetForm = () => {
-    setCardData(null)
-    setPSEData(null)
+    setPhoneNumber("")
+    setBreBKey("")
+    setBreBBank("")
     setErrors([])
-    setSelectedMethod("card")
+    setSelectedMethod("nequi")
   }
 
   const handleClose = () => {
@@ -157,7 +109,7 @@ export function AddPaymentMethodDialog({ isOpen, onClose, onSuccess }: AddPaymen
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="bg-card border-border max-w-2xl">
+      <DialogContent className="bg-card border-border max-w-md">
         {showSuccess ? (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mb-4">
@@ -174,30 +126,90 @@ export function AddPaymentMethodDialog({ isOpen, onClose, onSuccess }: AddPaymen
               <DialogTitle className="text-foreground text-xl">Agregar Método de Pago</DialogTitle>
             </DialogHeader>
 
-            <div className="mt-4">
-              <Tabs value={selectedMethod} onValueChange={(value) => setSelectedMethod(value as "card" | "pse")}>
-                <TabsList className="grid w-full grid-cols-2 bg-muted">
-                  <TabsTrigger value="card" className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4" />
-                    Tarjeta de Crédito
-                  </TabsTrigger>
-                  <TabsTrigger value="pse" className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    PSE
-                  </TabsTrigger>
-                </TabsList>
+            <div className="mt-4 space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="payment-method" className="text-foreground">
+                  Selecciona el método de pago
+                </Label>
+                <Select value={selectedMethod} onValueChange={(value: any) => setSelectedMethod(value)}>
+                  <SelectTrigger id="payment-method" className="bg-background border-border text-foreground">
+                    <SelectValue placeholder="Selecciona un método" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="nequi" className="text-foreground">
+                      Nequi
+                    </SelectItem>
+                    <SelectItem value="daviplata" className="text-foreground">
+                      Daviplata
+                    </SelectItem>
+                    <SelectItem value="bre-b" className="text-foreground">
+                      Bre-B
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                <TabsContent value="card" className="mt-6">
-                  <CardPayment onDataChange={setCardData} />
-                </TabsContent>
+              {(selectedMethod === "nequi" || selectedMethod === "daviplata") && (
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-foreground">
+                    Número de teléfono
+                  </Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="3001234567"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ""))}
+                    maxLength={10}
+                    className="bg-background border-border text-foreground"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Ingresa el número asociado a tu cuenta de {selectedMethod === "nequi" ? "Nequi" : "Daviplata"}
+                  </p>
+                </div>
+              )}
 
-                <TabsContent value="pse" className="mt-6">
-                  <PSEPayment onDataChange={setPSEData} />
-                </TabsContent>
-              </Tabs>
+              {selectedMethod === "bre-b" && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="breb-key" className="text-foreground">
+                      Llave Bre-B
+                    </Label>
+                    <Input
+                      id="breb-key"
+                      type="text"
+                      placeholder="Ingresa tu llave"
+                      value={breBKey}
+                      onChange={(e) => setBreBKey(e.target.value)}
+                      className="bg-background border-border text-foreground"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Ingresa tu número de cuenta o identificador de Bre-B
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="breb-bank" className="text-foreground">
+                      Seleccionar banco
+                    </Label>
+                    <Select value={breBBank} onValueChange={setBreBBank}>
+                      <SelectTrigger id="breb-bank" className="bg-background border-border text-foreground">
+                        <SelectValue placeholder="Selecciona tu banco" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-card border-border max-h-60">
+                        {colombianBanks.map((bank) => (
+                          <SelectItem key={bank} value={bank} className="text-foreground">
+                            {bank}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
 
               {errors.length > 0 && (
-                <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
                   <ul className="text-sm text-red-500 space-y-1">
                     {errors.map((error, index) => (
                       <li key={index}>• {error}</li>

@@ -37,13 +37,12 @@ export function SecurityPaymentBar() {
 
             <div className="flex items-center gap-1">
               <Image
-                src="/images/mastercard.jfif"
-                alt="Mastercard"
+                src="/images/bre-b-logo.png"
+                alt="Bre-B"
                 width={50}
                 height={24}
                 className="h-6 w-auto object-contain"
               />
-              <span className="text-[10px] sm:text-xs">Débito/Crédito</span>
             </div>
           </div>
         </div>

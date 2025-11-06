@@ -61,6 +61,8 @@ interface Order {
   bank?: string // Added bank field to the interface
   account_type?: string // Added account_type field
   account_number?: string // Added account_number field
+  breb_key?: string // Agregado campo breb_key
+  breb_bank?: string // Agregado campo breb_bank
 }
 
 const deliveryStatusOptions = [
@@ -88,8 +90,10 @@ export function OrdersCustomersManager() {
 
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null)
   const [editingOrder, setEditingOrder] = useState<
-    Partial<Order & { bank?: string; account_type?: string; account_number?: string }>
-  >({}) // Include bank, account_type, and account_number in editingOrder type
+    Partial<
+      Order & { bank?: string; account_type?: string; account_number?: string; breb_key?: string; breb_bank?: string }
+    >
+  >({}) // Include bank, account_type, account_number, breb_key, and breb_bank in editingOrder type
   const [editingDepartment, setEditingDepartment] = useState("")
   const [editingMunicipalities, setEditingMunicipalities] = useState<Array<{ name: string; code: string }>>([])
 
@@ -103,8 +107,10 @@ export function OrdersCustomersManager() {
     total_product_cost: "",
     payment_method: "",
     bank: "",
-    account_type: "", // Added account_type field
-    account_number: "", // Added account_number field
+    breb_key: "", // Agregado campo para llave de Bre-B
+    breb_bank: "", // Agregado campo para banco de Bre-B
+    account_type: "",
+    account_number: "",
     shipping_type: "",
     shipping_cost: "",
     shipping_company: "",
@@ -193,6 +199,17 @@ export function OrdersCustomersManager() {
       return
     }
 
+    if (newOrder.payment_method === "breb") {
+      if (!newOrder.breb_key) {
+        alert("Por favor ingresa la llave de Bre-B")
+        return
+      }
+      if (!newOrder.breb_bank) {
+        alert("Por favor selecciona el banco para Bre-B")
+        return
+      }
+    }
+
     if ((newOrder.payment_method === "tarjeta" || newOrder.payment_method === "banco") && !newOrder.bank) {
       alert("Por favor selecciona el banco")
       return
@@ -220,8 +237,10 @@ export function OrdersCustomersManager() {
         total_product_cost: parseFormattedNumber(newOrder.total_product_cost),
         payment_method: newOrder.payment_method,
         bank: newOrder.bank || null,
-        account_type: newOrder.account_type || null, // Added account_type to insert
-        account_number: newOrder.account_number || null, // Added account_number to insert
+        breb_key: newOrder.breb_key || null, // Agregado campo breb_key
+        breb_bank: newOrder.breb_bank || null, // Agregado campo breb_bank
+        account_type: newOrder.account_type || null,
+        account_number: newOrder.account_number || null,
         shipping_type: newOrder.shipping_type,
         shipping_cost: parseFormattedNumber(newOrder.shipping_cost),
         shipping_company: newOrder.shipping_company,
@@ -398,8 +417,10 @@ export function OrdersCustomersManager() {
       total_product_cost: "",
       payment_method: "",
       bank: "",
-      account_type: "", // Reset account_type
-      account_number: "", // Reset account_number
+      breb_key: "", // Reset breb_key
+      breb_bank: "", // Reset breb_bank
+      account_type: "",
+      account_number: "",
       shipping_type: "",
       shipping_cost: "",
       shipping_company: "",
@@ -420,8 +441,10 @@ export function OrdersCustomersManager() {
       customer_municipality: order.customer_municipality,
       payment_method: order.payment_method,
       bank: (order as any).bank || "",
-      account_type: (order as any).account_type || "", // Added account_type to editing state
-      account_number: (order as any).account_number || "", // Added account_number to editing state
+      breb_key: (order as any).breb_key || "", // Agregado breb_key al estado de edición
+      breb_bank: (order as any).breb_bank || "", // Agregado breb_bank al estado de edición
+      account_type: (order as any).account_type || "",
+      account_number: (order as any).account_number || "",
       order_status: order.order_status,
       delivery_status: order.delivery_status || "no",
       shipping_type: order.shipping_type, // Added shipping fields to editing state
@@ -434,6 +457,17 @@ export function OrdersCustomersManager() {
 
   const handleSaveEdit = async () => {
     if (!editingOrderId) return
+
+    if (editingOrder.payment_method === "breb") {
+      if (!(editingOrder as any).breb_key) {
+        alert("Por favor ingresa la llave de Bre-B")
+        return
+      }
+      if (!(editingOrder as any).breb_bank) {
+        alert("Por favor selecciona el banco para Bre-B")
+        return
+      }
+    }
 
     if ((editingOrder.payment_method === "tarjeta" || editingOrder.payment_method === "banco") && !editingOrder.bank) {
       alert("Por favor selecciona el banco")
@@ -459,6 +493,14 @@ export function OrdersCustomersManager() {
       customer_municipality: editingOrder.customer_municipality,
       payment_method: editingOrder.payment_method,
       bank: editingOrder.bank && editingOrder.bank.trim() !== "" ? editingOrder.bank : null,
+      breb_key:
+        (editingOrder as any).breb_key && (editingOrder as any).breb_key.trim() !== ""
+          ? (editingOrder as any).breb_key
+          : null, // Agregado breb_key a la actualización
+      breb_bank:
+        (editingOrder as any).breb_bank && (editingOrder as any).breb_bank.trim() !== ""
+          ? (editingOrder as any).breb_bank
+          : null, // Agregado breb_bank a la actualización
       account_type:
         editingOrder.account_type && editingOrder.account_type.trim() !== "" ? editingOrder.account_type : null,
       account_number:
@@ -515,6 +557,11 @@ export function OrdersCustomersManager() {
         "Método de Pago": paymentMethods.find((m) => m.value === order.payment_method)?.label || order.payment_method,
         Banco: (order as any).bank
           ? colombiaBanks.find((b) => b.value === (order as any).bank)?.label || (order as any).bank
+          : "N/A",
+        // Mostrar información de Bre-B en exportación
+        "Llave Bre-B": (order as any).breb_key || "N/A",
+        "Banco Bre-B": (order as any).breb_bank
+          ? colombiaBanks.find((b) => b.value === (order as any).breb_bank)?.label || (order as any).breb_bank
           : "N/A",
         Estado: getStatusLabel(order.order_status),
         Entregado:
@@ -632,6 +679,12 @@ export function OrdersCustomersManager() {
         if (!(order as any).bank) missingFields.push("Banco")
         if (!(order as any).account_type) missingFields.push("Tipo de cuenta")
         if (!(order as any).account_number) missingFields.push("Número de cuenta")
+      }
+
+      // Validate Bre-B fields if payment method requires it
+      if (order.payment_method === "breb") {
+        if (!(order as any).breb_key) missingFields.push("Llave de Bre-B")
+        if (!(order as any).breb_bank) missingFields.push("Banco de Bre-B")
       }
 
       if (missingFields.length > 0) {
@@ -903,6 +956,8 @@ export function OrdersCustomersManager() {
                                 ...prev,
                                 payment_method: value,
                                 bank: "",
+                                breb_key: "", // Reset breb_key cuando cambia el método de pago
+                                breb_bank: "", // Reset breb_bank cuando cambia el método de pago
                                 account_type: "",
                                 account_number: "",
                               }))
@@ -920,6 +975,37 @@ export function OrdersCustomersManager() {
                             </SelectContent>
                           </Select>
                         </div>
+                        {newOrder.payment_method === "breb" && (
+                          <>
+                            <div>
+                              <Label htmlFor="breb_key">Llave de Bre-B *</Label>
+                              <Input
+                                id="breb_key"
+                                value={newOrder.breb_key}
+                                onChange={(e) => setNewOrder((prev) => ({ ...prev, breb_key: e.target.value }))}
+                                placeholder="Ingresa la llave"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="breb_bank">Banco *</Label>
+                              <Select
+                                value={newOrder.breb_bank}
+                                onValueChange={(value) => setNewOrder((prev) => ({ ...prev, breb_bank: value }))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seleccionar banco" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {colombiaBanks.map((bank) => (
+                                    <SelectItem key={bank.value} value={bank.value}>
+                                      {bank.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </>
+                        )}
                         {(newOrder.payment_method === "tarjeta" || newOrder.payment_method === "banco") && (
                           <div>
                             <Label htmlFor="bank">Banco *</Label>
@@ -1263,6 +1349,8 @@ export function OrdersCustomersManager() {
                                     ...prev,
                                     payment_method: value,
                                     bank: "",
+                                    breb_key: "", // Reset breb_key en edición
+                                    breb_bank: "", // Reset breb_bank en edición
                                     account_type: "",
                                     account_number: "",
                                   }))
@@ -1279,6 +1367,33 @@ export function OrdersCustomersManager() {
                                   ))}
                                 </SelectContent>
                               </Select>
+                              {editingOrder.payment_method === "breb" && (
+                                <>
+                                  <Input
+                                    value={(editingOrder as any).breb_key || ""}
+                                    onChange={(e) => setEditingOrder((prev) => ({ ...prev, breb_key: e.target.value }))}
+                                    placeholder="Llave de Bre-B"
+                                    className="text-xs"
+                                  />
+                                  <Select
+                                    value={(editingOrder as any).breb_bank || ""}
+                                    onValueChange={(value) =>
+                                      setEditingOrder((prev) => ({ ...prev, breb_bank: value }))
+                                    }
+                                  >
+                                    <SelectTrigger className="text-xs">
+                                      <SelectValue placeholder="Seleccionar banco" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {colombiaBanks.map((bank) => (
+                                        <SelectItem key={bank.value} value={bank.value}>
+                                          {bank.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </>
+                              )}
                               {(editingOrder.payment_method === "tarjeta" ||
                                 editingOrder.payment_method === "banco") && (
                                 <>
@@ -1332,6 +1447,21 @@ export function OrdersCustomersManager() {
                                 {paymentMethods.find((m) => m.value === order.payment_method)?.label ||
                                   order.payment_method}
                               </Badge>
+                              {order.payment_method === "breb" && (
+                                <>
+                                  {(order as any).breb_key && (
+                                    <div className="text-xs text-muted-foreground">
+                                      Llave: {(order as any).breb_key}
+                                    </div>
+                                  )}
+                                  {(order as any).breb_bank && (
+                                    <div className="text-xs text-muted-foreground">
+                                      {colombiaBanks.find((b) => b.value === (order as any).breb_bank)?.label ||
+                                        (order as any).breb_bank}
+                                    </div>
+                                  )}
+                                </>
+                              )}
                               {(order as any).bank && (
                                 <div className="text-xs text-muted-foreground">
                                   {colombiaBanks.find((b) => b.value === (order as any).bank)?.label ||
@@ -1620,6 +1750,23 @@ export function OrdersCustomersManager() {
                       {paymentMethods.find((m) => m.value === selectedOrder.payment_method)?.label ||
                         selectedOrder.payment_method}
                     </p>
+                    {selectedOrder.payment_method === "breb" && (
+                      <>
+                        {(selectedOrder as any).breb_key && (
+                          <p>
+                            <span className="text-muted-foreground">Llave Bre-B:</span>{" "}
+                            {(selectedOrder as any).breb_key}
+                          </p>
+                        )}
+                        {(selectedOrder as any).breb_bank && (
+                          <p>
+                            <span className="text-muted-foreground">Banco:</span>{" "}
+                            {colombiaBanks.find((b) => b.value === (selectedOrder as any).breb_bank)?.label ||
+                              (selectedOrder as any).breb_bank}
+                          </p>
+                        )}
+                      </>
+                    )}
                     {(selectedOrder as any).bank && (
                       <p>
                         <span className="text-muted-foreground">Banco:</span>{" "}

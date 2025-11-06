@@ -1343,13 +1343,43 @@ export const shippingCompanies = [
 export const paymentMethods = [
   { value: "nequi", label: "Nequi" },
   { value: "daviplata", label: "Daviplata" },
-  { value: "tarjeta", label: "Tarjeta de Crédito/Débito" },
-  { value: "banco", label: "Transferencia Bancaria" },
-  { value: "contraentrega", label: "Paga al recibir" },
+  { value: "breb", label: "Bre-B" },
 ]
 
 export const shippingTypes = [
   { value: "contraentrega", label: "Contraentrega (Paga al recibir)" },
   { value: "paga_envio", label: "Paga solo el envío" },
   { value: "gratis", label: "Envío Gratis" },
+]
+
+export const colombianBanks = [
+  "Bancolombia",
+  "Banco de Bogotá",
+  "Davivienda",
+  "BBVA Colombia",
+  "Banco de Occidente",
+  "Banco Popular",
+  "Banco Caja Social",
+  "Banco AV Villas",
+  "Banco Agrario",
+  "Banco Pichincha",
+  "Banco Falabella",
+  "Banco Finandina",
+  "Banco GNB Sudameris",
+  "Banco Santander",
+  "Banco Cooperativo Coopcentral",
+  "Banco Serfinanza",
+  "Banco W",
+  "Bancamía",
+  "Banco Mundo Mujer",
+  "Banco Procredit",
+  "Nequi",
+  "Daviplata",
+  "Movii",
+  "Dale",
+  "Rappipay",
+  "Powwi",
+  "Lulo Bank",
+  "Ualá",
+  "Nubank",
 ]

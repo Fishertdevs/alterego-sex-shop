@@ -3,10 +3,11 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CreditCard, Building2 } from "lucide-react"
-import { CardPayment, type CardPaymentData } from "./card-payment"
-import { PSEPayment, type PSEPaymentData } from "./pse-payment"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { colombianBanks } from "@/lib/colombia-data"
 
 interface PaymentMethodProps {
   onContinue: (paymentData: PaymentData) => void
@@ -14,57 +15,33 @@ interface PaymentMethodProps {
 }
 
 export interface PaymentData {
-  method: "card" | "pse"
-  cardData?: CardPaymentData
-  pseData?: PSEPaymentData
+  method: "nequi" | "daviplata" | "bre-b"
+  phoneNumber?: string
+  breBKey?: string
+  breBBank?: string
 }
 
 export function PaymentMethod({ onContinue, onBack }: PaymentMethodProps) {
-  const [selectedMethod, setSelectedMethod] = useState<"card" | "pse">("card")
-  const [cardData, setCardData] = useState<CardPaymentData | null>(null)
-  const [pseData, setPSEData] = useState<PSEPaymentData | null>(null)
+  const [selectedMethod, setSelectedMethod] = useState<"nequi" | "daviplata" | "bre-b">("nequi")
+  const [phoneNumber, setPhoneNumber] = useState("")
+  const [breBKey, setBreBKey] = useState("")
+  const [breBBank, setBreBBank] = useState("")
   const [errors, setErrors] = useState<string[]>([])
 
-  const validateCardPayment = (): boolean => {
+  const validatePayment = (): boolean => {
     const newErrors: string[] = []
 
-    if (!cardData?.cardNumber || cardData.cardNumber.replace(/\s/g, "").length < 13) {
-      newErrors.push("Número de tarjeta inválido")
-    }
-
-    if (!cardData?.cardName || cardData.cardName.trim().length < 3) {
-      newErrors.push("Nombre en la tarjeta es requerido")
-    }
-
-    if (!cardData?.expiryDate || !/^\d{2}\/\d{2}$/.test(cardData.expiryDate)) {
-      newErrors.push("Fecha de vencimiento inválida")
-    }
-
-    if (!cardData?.cvv || cardData.cvv.length < 3) {
-      newErrors.push("CVV inválido")
-    }
-
-    setErrors(newErrors)
-    return newErrors.length === 0
-  }
-
-  const validatePSEPayment = (): boolean => {
-    const newErrors: string[] = []
-
-    if (!pseData?.bank) {
-      newErrors.push("Debes seleccionar un banco")
-    }
-
-    if (!pseData?.personType) {
-      newErrors.push("Debes seleccionar el tipo de persona")
-    }
-
-    if (!pseData?.documentType) {
-      newErrors.push("Debes seleccionar el tipo de documento")
-    }
-
-    if (!pseData?.documentNumber || pseData.documentNumber.length < 5) {
-      newErrors.push("Número de documento inválido")
+    if (selectedMethod === "nequi" || selectedMethod === "daviplata") {
+      if (!phoneNumber || phoneNumber.length < 10) {
+        newErrors.push("Número de teléfono inválido (mínimo 10 dígitos)")
+      }
+    } else if (selectedMethod === "bre-b") {
+      if (!breBKey || breBKey.trim().length < 5) {
+        newErrors.push("La llave de Bre-B es requerida")
+      }
+      if (!breBBank) {
+        newErrors.push("Debes seleccionar un banco")
+      }
     }
 
     setErrors(newErrors)
@@ -72,19 +49,21 @@ export function PaymentMethod({ onContinue, onBack }: PaymentMethodProps) {
   }
 
   const handleContinue = () => {
-    let isValid = false
+    const isValid = validatePayment()
+    if (!isValid) return
 
-    if (selectedMethod === "card") {
-      isValid = validateCardPayment()
-      if (isValid && cardData) {
-        onContinue({ method: "card", cardData })
-      }
-    } else {
-      isValid = validatePSEPayment()
-      if (isValid && pseData) {
-        onContinue({ method: "pse", pseData })
-      }
+    const paymentData: PaymentData = {
+      method: selectedMethod,
     }
+
+    if (selectedMethod === "nequi" || selectedMethod === "daviplata") {
+      paymentData.phoneNumber = phoneNumber
+    } else {
+      paymentData.breBKey = breBKey
+      paymentData.breBBank = breBBank
+    }
+
+    onContinue(paymentData)
   }
 
   return (
@@ -92,30 +71,90 @@ export function PaymentMethod({ onContinue, onBack }: PaymentMethodProps) {
       <CardHeader>
         <CardTitle className="text-foreground">Método de Pago</CardTitle>
       </CardHeader>
-      <CardContent>
-        <Tabs value={selectedMethod} onValueChange={(value) => setSelectedMethod(value as "card" | "pse")}>
-          <TabsList className="grid w-full grid-cols-2 bg-muted">
-            <TabsTrigger value="card" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              Tarjeta
-            </TabsTrigger>
-            <TabsTrigger value="pse" className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              PSE
-            </TabsTrigger>
-          </TabsList>
+      <CardContent className="space-y-6">
+        <div className="space-y-4">
+          <Label className="text-foreground text-base">Selecciona tu método de pago</Label>
+          <RadioGroup value={selectedMethod} onValueChange={(value: any) => setSelectedMethod(value)}>
+            <div className="flex items-center space-x-2 p-4 border border-border rounded-lg hover:bg-muted/50 cursor-pointer">
+              <RadioGroupItem value="nequi" id="nequi" />
+              <Label htmlFor="nequi" className="flex-1 cursor-pointer text-foreground">
+                Nequi
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2 p-4 border border-border rounded-lg hover:bg-muted/50 cursor-pointer">
+              <RadioGroupItem value="daviplata" id="daviplata" />
+              <Label htmlFor="daviplata" className="flex-1 cursor-pointer text-foreground">
+                Daviplata
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2 p-4 border border-border rounded-lg hover:bg-muted/50 cursor-pointer">
+              <RadioGroupItem value="bre-b" id="bre-b" />
+              <Label htmlFor="bre-b" className="flex-1 cursor-pointer text-foreground">
+                Bre-B
+              </Label>
+            </div>
+          </RadioGroup>
+        </div>
 
-          <TabsContent value="card" className="mt-6">
-            <CardPayment onDataChange={setCardData} />
-          </TabsContent>
+        {(selectedMethod === "nequi" || selectedMethod === "daviplata") && (
+          <div className="space-y-2">
+            <Label htmlFor="phone" className="text-foreground">
+              Número de teléfono
+            </Label>
+            <Input
+              id="phone"
+              type="tel"
+              placeholder="3001234567"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ""))}
+              maxLength={10}
+              className="bg-background border-border text-foreground"
+            />
+            <p className="text-xs text-muted-foreground">
+              Ingresa el número asociado a tu cuenta de {selectedMethod === "nequi" ? "Nequi" : "Daviplata"}
+            </p>
+          </div>
+        )}
 
-          <TabsContent value="pse" className="mt-6">
-            <PSEPayment onDataChange={setPSEData} />
-          </TabsContent>
-        </Tabs>
+        {selectedMethod === "bre-b" && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="breb-key" className="text-foreground">
+                Llave Bre-B
+              </Label>
+              <Input
+                id="breb-key"
+                type="text"
+                placeholder="Ingresa tu llave"
+                value={breBKey}
+                onChange={(e) => setBreBKey(e.target.value)}
+                className="bg-background border-border text-foreground"
+              />
+              <p className="text-xs text-muted-foreground">Ingresa tu número de cuenta o identificador de Bre-B</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="breb-bank" className="text-foreground">
+                Seleccionar banco
+              </Label>
+              <Select value={breBBank} onValueChange={setBreBBank}>
+                <SelectTrigger id="breb-bank" className="bg-background border-border text-foreground">
+                  <SelectValue placeholder="Selecciona tu banco" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border max-h-60">
+                  {colombianBanks.map((bank) => (
+                    <SelectItem key={bank} value={bank} className="text-foreground">
+                      {bank}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
 
         {errors.length > 0 && (
-          <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+          <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
             <ul className="text-sm text-red-500 space-y-1">
               {errors.map((error, index) => (
                 <li key={index}>• {error}</li>
