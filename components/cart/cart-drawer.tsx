@@ -23,8 +23,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const supabase = createBrowserClient()
 
   const generateWhatsAppMessage = () => {
-    let message = "¡Hola! Te saluda el equipo de *ALTERƎGO*\n\n"
-    message += "Hemos recibido tu solicitud con los siguientes productos:\n\n"
+    let message = "¡Hola! equipo ALTERƎGO quisiera solicitar los siguientes productos:\n\n"
 
     items.forEach((item, index) => {
       const subtotal = item.price * item.quantity
@@ -42,7 +41,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     message += `Total a pagar: *$${total.toLocaleString("es-CO")} COP*\n`
     message += `Envíos nacionales por Coordinadora.\n\n`
     message += "Si prefieres otra transportadora, indícalo en este chat y ajustaremos tu envío.\n\n"
-    message += "*Métodos de pago disponibles:* Nequi, Daviplata, PSE y Tarjeta.\n\n"
+    message += "*Métodos de pago disponibles:* Nequi, Daviplata y Bre-B.\n\n"
     message += "Gracias por elegir *ALTERƎGO*, donde el placer comienza con la imaginación."
 
     return encodeURIComponent(message)
