@@ -1349,8 +1349,8 @@ export function OrdersCustomersManager() {
                                     ...prev,
                                     payment_method: value,
                                     bank: "",
-                                    breb_key: "", // Reset breb_key en edición
-                                    breb_bank: "", // Reset breb_bank en edición
+                                    breb_key: "",
+                                    breb_bank: "",
                                     account_type: "",
                                     account_number: "",
                                   }))
