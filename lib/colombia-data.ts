@@ -1344,6 +1344,7 @@ export const paymentMethods = [
   { value: "nequi", label: "Nequi" },
   { value: "daviplata", label: "Daviplata" },
   { value: "breb", label: "Bre-B" },
+  { value: "efectivo", label: "Pago en Efectivo" },
 ]
 
 export const shippingTypes = [

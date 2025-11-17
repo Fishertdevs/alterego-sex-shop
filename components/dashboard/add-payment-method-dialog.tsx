@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CheckCircle2 } from "lucide-react"
+import { CheckCircle2 } from 'lucide-react'
 import { savePaymentMethod } from "@/lib/payments"
 import { useAuth } from "@/contexts/auth-context"
 import { colombianBanks } from "@/lib/colombia-data"
@@ -19,7 +19,7 @@ interface AddPaymentMethodDialogProps {
 
 export function AddPaymentMethodDialog({ isOpen, onClose, onSuccess }: AddPaymentMethodDialogProps) {
   const { user } = useAuth()
-  const [selectedMethod, setSelectedMethod] = useState<"nequi" | "daviplata" | "bre-b">("nequi")
+  const [selectedMethod, setSelectedMethod] = useState<"nequi" | "daviplata" | "bre-b" | "efectivo">("nequi")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [breBKey, setBreBKey] = useState("")
   const [breBBank, setBreBBank] = useState("")
@@ -67,9 +67,12 @@ export function AddPaymentMethodDialog({ isOpen, onClose, onSuccess }: AddPaymen
     } else if (selectedMethod === "daviplata") {
       methodName = "Daviplata"
       methodDetails = phoneNumber
-    } else {
+    } else if (selectedMethod === "bre-b") {
       methodName = "Bre-B"
       methodDetails = `${breBBank} - ${breBKey}`
+    } else {
+      methodName = "Pago en Efectivo"
+      methodDetails = "Efectivo"
     }
 
     savePaymentMethod({
@@ -145,6 +148,9 @@ export function AddPaymentMethodDialog({ isOpen, onClose, onSuccess }: AddPaymen
                     <SelectItem value="bre-b" className="text-foreground">
                       Bre-B
                     </SelectItem>
+                    <SelectItem value="efectivo" className="text-foreground">
+                      Pago en Efectivo
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -170,42 +176,30 @@ export function AddPaymentMethodDialog({ isOpen, onClose, onSuccess }: AddPaymen
               )}
 
               {selectedMethod === "bre-b" && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="breb-key" className="text-foreground">
-                      Llave Bre-B
-                    </Label>
-                    <Input
-                      id="breb-key"
-                      type="text"
-                      placeholder="Ingresa tu llave"
-                      value={breBKey}
-                      onChange={(e) => setBreBKey(e.target.value)}
-                      className="bg-background border-border text-foreground"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Ingresa tu número de cuenta o identificador de Bre-B
-                    </p>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="breb-key" className="text-foreground">
+                    Llave Bre-B
+                  </Label>
+                  <Input
+                    id="breb-key"
+                    type="text"
+                    placeholder="Ingresa tu llave"
+                    value={breBKey}
+                    onChange={(e) => setBreBKey(e.target.value)}
+                    className="bg-background border-border text-foreground"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Ingresa tu número de cuenta o identificador de Bre-B
+                  </p>
+                </div>
+              )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="breb-bank" className="text-foreground">
-                      Seleccionar banco
-                    </Label>
-                    <Select value={breBBank} onValueChange={setBreBBank}>
-                      <SelectTrigger id="breb-bank" className="bg-background border-border text-foreground">
-                        <SelectValue placeholder="Selecciona tu banco" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-card border-border max-h-60">
-                        {colombianBanks.map((bank) => (
-                          <SelectItem key={bank} value={bank} className="text-foreground">
-                            {bank}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
+              {selectedMethod === "efectivo" && (
+                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <p className="text-sm text-blue-500">
+                    Con Pago en Efectivo, pagarás cuando recibas tu pedido. El repartidor recibirá el pago en efectivo.
+                  </p>
+                </div>
               )}
 
               {errors.length > 0 && (

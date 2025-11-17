@@ -15,14 +15,14 @@ interface PaymentMethodProps {
 }
 
 export interface PaymentData {
-  method: "nequi" | "daviplata" | "bre-b"
+  method: "nequi" | "daviplata" | "bre-b" | "efectivo"
   phoneNumber?: string
   breBKey?: string
   breBBank?: string
 }
 
 export function PaymentMethod({ onContinue, onBack }: PaymentMethodProps) {
-  const [selectedMethod, setSelectedMethod] = useState<"nequi" | "daviplata" | "bre-b">("nequi")
+  const [selectedMethod, setSelectedMethod] = useState<"nequi" | "daviplata" | "bre-b" | "efectivo">("nequi")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [breBKey, setBreBKey] = useState("")
   const [breBBank, setBreBBank] = useState("")
@@ -58,7 +58,7 @@ export function PaymentMethod({ onContinue, onBack }: PaymentMethodProps) {
 
     if (selectedMethod === "nequi" || selectedMethod === "daviplata") {
       paymentData.phoneNumber = phoneNumber
-    } else {
+    } else if (selectedMethod === "bre-b") {
       paymentData.breBKey = breBKey
       paymentData.breBBank = breBBank
     }
@@ -91,6 +91,12 @@ export function PaymentMethod({ onContinue, onBack }: PaymentMethodProps) {
               <RadioGroupItem value="bre-b" id="bre-b" />
               <Label htmlFor="bre-b" className="flex-1 cursor-pointer text-foreground">
                 Bre-B
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2 p-4 border border-border rounded-lg hover:bg-muted/50 cursor-pointer">
+              <RadioGroupItem value="efectivo" id="efectivo" />
+              <Label htmlFor="efectivo" className="flex-1 cursor-pointer text-foreground">
+                Pago en Efectivo
               </Label>
             </div>
           </RadioGroup>
@@ -151,6 +157,14 @@ export function PaymentMethod({ onContinue, onBack }: PaymentMethodProps) {
               </Select>
             </div>
           </>
+        )}
+
+        {selectedMethod === "efectivo" && (
+          <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+            <p className="text-sm text-blue-500">
+              Con Pago en Efectivo, pagarás cuando recibas tu pedido. El repartidor recibirá el pago en efectivo.
+            </p>
+          </div>
         )}
 
         {errors.length > 0 && (
