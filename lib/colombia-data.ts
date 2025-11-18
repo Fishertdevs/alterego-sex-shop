@@ -1345,6 +1345,7 @@ export const paymentMethods = [
   { value: "daviplata", label: "Daviplata" },
   { value: "breb", label: "Bre-B" },
   { value: "efectivo", label: "Pago en Efectivo" },
+  { value: "addi", label: "Addi" },
 ]
 
 export const shippingTypes = [

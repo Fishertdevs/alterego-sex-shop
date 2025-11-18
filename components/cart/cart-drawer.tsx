@@ -4,7 +4,7 @@ import { useCart } from "@/contexts/cart-context"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { Minus, Plus, Trash2, ShoppingBag, MessageCircle } from "lucide-react"
+import { Minus, Plus, Trash2, ShoppingBag, MessageCircle } from 'lucide-react'
 import Image from "next/image"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useStoreSettings } from "@/hooks/use-store-settings"
@@ -41,7 +41,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     message += `Total a pagar: *$${total.toLocaleString("es-CO")} COP*\n`
     message += `Envíos nacionales por Coordinadora.\n\n`
     message += "Si prefieres otra transportadora, indícalo en este chat y ajustaremos tu envío.\n\n"
-    message += "*Métodos de pago disponibles:* Nequi, Daviplata y Bre-B.\n\n"
+    message += "*Métodos de pago disponibles:* Nequi, Daviplata, Bre-B, Addi y Pago en Efectivo.\n\n"
     message += "Gracias por elegir *ALTERƎGO*, donde el placer comienza con la imaginación."
 
     return encodeURIComponent(message)

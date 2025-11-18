@@ -1,4 +1,4 @@
-import { Lock } from "lucide-react"
+import { Lock } from 'lucide-react'
 import Image from "next/image"
 
 export function SecurityPaymentBar() {
@@ -39,6 +39,16 @@ export function SecurityPaymentBar() {
               <Image
                 src="/images/bre-b-logo.png"
                 alt="Bre-B"
+                width={50}
+                height={24}
+                className="h-6 w-auto object-contain"
+              />
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Image
+                src="/images/addi-logo.jpg"
+                alt="Addi"
                 width={50}
                 height={24}
                 className="h-6 w-auto object-contain"

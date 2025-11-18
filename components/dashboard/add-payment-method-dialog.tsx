@@ -19,10 +19,12 @@ interface AddPaymentMethodDialogProps {
 
 export function AddPaymentMethodDialog({ isOpen, onClose, onSuccess }: AddPaymentMethodDialogProps) {
   const { user } = useAuth()
-  const [selectedMethod, setSelectedMethod] = useState<"nequi" | "daviplata" | "bre-b" | "efectivo">("nequi")
+  const [selectedMethod, setSelectedMethod] = useState<"nequi" | "daviplata" | "bre-b" | "efectivo" | "addi">("nequi")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [breBKey, setBreBKey] = useState("")
   const [breBBank, setBreBBank] = useState("")
+  const [addiCedula, setAddiCedula] = useState("")
+  const [addiPhone, setAddiPhone] = useState("")
   const [errors, setErrors] = useState<string[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -40,6 +42,13 @@ export function AddPaymentMethodDialog({ isOpen, onClose, onSuccess }: AddPaymen
       }
       if (!breBBank) {
         newErrors.push("Debes seleccionar un banco")
+      }
+    } else if (selectedMethod === "addi") {
+      if (!addiCedula || addiCedula.length < 6) {
+        newErrors.push("Cédula de ciudadanía inválida (mínimo 6 dígitos)")
+      }
+      if (!addiPhone || addiPhone.length < 10) {
+        newErrors.push("Número de teléfono inválido (mínimo 10 dígitos)")
       }
     }
 
@@ -70,6 +79,9 @@ export function AddPaymentMethodDialog({ isOpen, onClose, onSuccess }: AddPaymen
     } else if (selectedMethod === "bre-b") {
       methodName = "Bre-B"
       methodDetails = `${breBBank} - ${breBKey}`
+    } else if (selectedMethod === "addi") {
+      methodName = "Addi"
+      methodDetails = `CC: ${addiCedula} - Tel: ${addiPhone}`
     } else {
       methodName = "Pago en Efectivo"
       methodDetails = "Efectivo"
@@ -99,6 +111,8 @@ export function AddPaymentMethodDialog({ isOpen, onClose, onSuccess }: AddPaymen
     setPhoneNumber("")
     setBreBKey("")
     setBreBBank("")
+    setAddiCedula("")
+    setAddiPhone("")
     setErrors([])
     setSelectedMethod("nequi")
   }
@@ -139,66 +153,58 @@ export function AddPaymentMethodDialog({ isOpen, onClose, onSuccess }: AddPaymen
                     <SelectValue placeholder="Selecciona un método" />
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border">
-                    <SelectItem value="nequi" className="text-foreground">
-                      Nequi
-                    </SelectItem>
-                    <SelectItem value="daviplata" className="text-foreground">
-                      Daviplata
-                    </SelectItem>
-                    <SelectItem value="bre-b" className="text-foreground">
-                      Bre-B
-                    </SelectItem>
-                    <SelectItem value="efectivo" className="text-foreground">
-                      Pago en Efectivo
-                    </SelectItem>
+                    <SelectItem value="nequi" className="text-foreground">Nequi</SelectItem>
+                    <SelectItem value="daviplata" className="text-foreground">Daviplata</SelectItem>
+                    <SelectItem value="bre-b" className="text-foreground">Bre-B</SelectItem>
+                    <SelectItem value="efectivo" className="text-foreground">Pago en Efectivo</SelectItem>
+                    <SelectItem value="addi" className="text-foreground">Addi</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {(selectedMethod === "nequi" || selectedMethod === "daviplata") && (
                 <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-foreground">
-                    Número de teléfono
-                  </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="3001234567"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ""))}
-                    maxLength={10}
-                    className="bg-background border-border text-foreground"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Ingresa el número asociado a tu cuenta de {selectedMethod === "nequi" ? "Nequi" : "Daviplata"}
-                  </p>
+                  <Label htmlFor="phone" className="text-foreground">Número de teléfono</Label>
+                  <Input id="phone" type="tel" placeholder="3001234567" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ""))} maxLength={10} className="bg-background border-border text-foreground" />
+                  <p className="text-xs text-muted-foreground">Ingresa el número asociado a tu cuenta de {selectedMethod === "nequi" ? "Nequi" : "Daviplata"}</p>
                 </div>
               )}
 
               {selectedMethod === "bre-b" && (
                 <div className="space-y-2">
-                  <Label htmlFor="breb-key" className="text-foreground">
-                    Llave Bre-B
-                  </Label>
-                  <Input
-                    id="breb-key"
-                    type="text"
-                    placeholder="Ingresa tu llave"
-                    value={breBKey}
-                    onChange={(e) => setBreBKey(e.target.value)}
-                    className="bg-background border-border text-foreground"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Ingresa tu número de cuenta o identificador de Bre-B
-                  </p>
+                  <Label htmlFor="breb-key" className="text-foreground">Llave Bre-B</Label>
+                  <Input id="breb-key" type="text" placeholder="Ingresa tu llave" value={breBKey} onChange={(e) => setBreBKey(e.target.value)} className="bg-background border-border text-foreground" />
+                  <p className="text-xs text-muted-foreground">Ingresa tu número de cuenta o identificador de Bre-B</p>
+                  <Label htmlFor="breb-bank" className="text-foreground mt-4">Seleccionar banco</Label>
+                  <Select value={breBBank} onValueChange={setBreBBank}>
+                    <SelectTrigger id="breb-bank" className="bg-background border-border text-foreground">
+                      <SelectValue placeholder="Selecciona tu banco" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border max-h-60">
+                      {colombianBanks.map((bank) => (<SelectItem key={bank} value={bank} className="text-foreground">{bank}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {selectedMethod === "addi" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="addi-cedula" className="text-foreground">Cédula de Ciudadanía</Label>
+                    <Input id="addi-cedula" type="text" placeholder="1234567890" value={addiCedula} onChange={(e) => setAddiCedula(e.target.value.replace(/\D/g, ""))} maxLength={12} className="bg-background border-border text-foreground" />
+                    <p className="text-xs text-muted-foreground">Ingresa tu número de cédula</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="addi-phone" className="text-foreground">Número de Teléfono</Label>
+                    <Input id="addi-phone" type="tel" placeholder="3001234567" value={addiPhone} onChange={(e) => setAddiPhone(e.target.value.replace(/\D/g, ""))} maxLength={10} className="bg-background border-border text-foreground" />
+                    <p className="text-xs text-muted-foreground">Ingresa tu número de teléfono asociado a Addi</p>
+                  </div>
                 </div>
               )}
 
               {selectedMethod === "efectivo" && (
                 <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <p className="text-sm text-blue-500">
-                    Con Pago en Efectivo, pagarás cuando recibas tu pedido. El repartidor recibirá el pago en efectivo.
-                  </p>
+                  <p className="text-sm text-blue-500">Con Pago en Efectivo, pagarás cuando recibas tu pedido. El repartidor recibirá el pago en efectivo.</p>
                 </div>
               )}
 
@@ -213,20 +219,10 @@ export function AddPaymentMethodDialog({ isOpen, onClose, onSuccess }: AddPaymen
               )}
 
               <div className="flex gap-3 mt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleClose}
-                  disabled={isProcessing}
-                  className="flex-1 bg-transparent"
-                >
+                <Button type="button" variant="outline" onClick={handleClose} disabled={isProcessing} className="flex-1 bg-transparent">
                   Cancelar
                 </Button>
-                <Button
-                  onClick={handleSave}
-                  disabled={isProcessing}
-                  className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
-                >
+                <Button onClick={handleSave} disabled={isProcessing} className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground">
                   {isProcessing ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-accent-foreground mr-2"></div>

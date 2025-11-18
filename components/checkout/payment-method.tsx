@@ -15,17 +15,21 @@ interface PaymentMethodProps {
 }
 
 export interface PaymentData {
-  method: "nequi" | "daviplata" | "bre-b" | "efectivo"
+  method: "nequi" | "daviplata" | "bre-b" | "efectivo" | "addi"
   phoneNumber?: string
   breBKey?: string
   breBBank?: string
+  addiCedula?: string
+  addiPhone?: string
 }
 
 export function PaymentMethod({ onContinue, onBack }: PaymentMethodProps) {
-  const [selectedMethod, setSelectedMethod] = useState<"nequi" | "daviplata" | "bre-b" | "efectivo">("nequi")
+  const [selectedMethod, setSelectedMethod] = useState<"nequi" | "daviplata" | "bre-b" | "efectivo" | "addi">("nequi")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [breBKey, setBreBKey] = useState("")
   const [breBBank, setBreBBank] = useState("")
+  const [addiCedula, setAddiCedula] = useState("")
+  const [addiPhone, setAddiPhone] = useState("")
   const [errors, setErrors] = useState<string[]>([])
 
   const validatePayment = (): boolean => {
@@ -41,6 +45,13 @@ export function PaymentMethod({ onContinue, onBack }: PaymentMethodProps) {
       }
       if (!breBBank) {
         newErrors.push("Debes seleccionar un banco")
+      }
+    } else if (selectedMethod === "addi") {
+      if (!addiCedula || addiCedula.length < 6) {
+        newErrors.push("Cédula de ciudadanía inválida (mínimo 6 dígitos)")
+      }
+      if (!addiPhone || addiPhone.length < 10) {
+        newErrors.push("Número de teléfono inválido (mínimo 10 dígitos)")
       }
     }
 
@@ -61,6 +72,9 @@ export function PaymentMethod({ onContinue, onBack }: PaymentMethodProps) {
     } else if (selectedMethod === "bre-b") {
       paymentData.breBKey = breBKey
       paymentData.breBBank = breBBank
+    } else if (selectedMethod === "addi") {
+      paymentData.addiCedula = addiCedula
+      paymentData.addiPhone = addiPhone
     }
 
     onContinue(paymentData)
@@ -97,6 +111,12 @@ export function PaymentMethod({ onContinue, onBack }: PaymentMethodProps) {
               <RadioGroupItem value="efectivo" id="efectivo" />
               <Label htmlFor="efectivo" className="flex-1 cursor-pointer text-foreground">
                 Pago en Efectivo
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2 p-4 border border-border rounded-lg hover:bg-muted/50 cursor-pointer">
+              <RadioGroupItem value="addi" id="addi" />
+              <Label htmlFor="addi" className="flex-1 cursor-pointer text-foreground">
+                Addi
               </Label>
             </div>
           </RadioGroup>
@@ -155,6 +175,41 @@ export function PaymentMethod({ onContinue, onBack }: PaymentMethodProps) {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </>
+        )}
+
+        {selectedMethod === "addi" && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="addi-cedula" className="text-foreground">
+                Cédula de Ciudadanía
+              </Label>
+              <Input
+                id="addi-cedula"
+                type="text"
+                placeholder="1234567890"
+                value={addiCedula}
+                onChange={(e) => setAddiCedula(e.target.value.replace(/\D/g, ""))}
+                maxLength={12}
+                className="bg-background border-border text-foreground"
+              />
+              <p className="text-xs text-muted-foreground">Ingresa tu número de cédula</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="addi-phone" className="text-foreground">
+                Número de Teléfono
+              </Label>
+              <Input
+                id="addi-phone"
+                type="tel"
+                placeholder="3001234567"
+                value={addiPhone}
+                onChange={(e) => setAddiPhone(e.target.value.replace(/\D/g, ""))}
+                maxLength={10}
+                className="bg-background border-border text-foreground"
+              />
+              <p className="text-xs text-muted-foreground">Ingresa tu número de teléfono asociado a Addi</p>
             </div>
           </>
         )}
