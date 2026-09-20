@@ -4,7 +4,8 @@ import { useCart } from "@/contexts/cart-context"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { Minus, Plus, Trash2, ShoppingBag, MessageCircle } from 'lucide-react'
+import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react'
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon"
 import Image from "next/image"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useStoreSettings } from "@/hooks/use-store-settings"
@@ -215,7 +216,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                       onClick={handleCheckout}
                       className="w-full bg-black hover:bg-black/90 text-white border border-[#D4AF37] font-serif"
                     >
-                      <MessageCircle className="h-4 w-4 mr-2" />
+                      <WhatsAppIcon className="h-4 w-4 mr-2" />
                       Finalizar por WhatsApp
                     </Button>
                     <Button variant="outline" onClick={clearCart} className="w-full bg-transparent font-serif">

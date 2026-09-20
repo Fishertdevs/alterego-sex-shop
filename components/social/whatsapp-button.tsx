@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { MessageCircle } from "lucide-react"
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon"
 import { Button } from "@/components/ui/button"
 import { useStoreSettings } from "@/hooks/use-store-settings"
 
@@ -36,7 +36,7 @@ export function WhatsAppButton() {
       type="button"
       aria-label="Contactar por WhatsApp"
     >
-      <MessageCircle className="h-6 w-6" />
+      <WhatsAppIcon className="h-6 w-6" />
       <span className="sr-only">Contactar por WhatsApp</span>
     </Button>
   )

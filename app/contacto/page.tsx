@@ -3,7 +3,8 @@
 import { Navigation } from "@/components/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Phone, Mail, Clock, Instagram, Facebook, MessageCircle } from "lucide-react"
+import { Phone, Mail, Clock, Instagram, Facebook } from "lucide-react"
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon"
 import { useStoreSettings } from "@/hooks/use-store-settings"
 
 export default function ContactoPage() {
@@ -45,7 +46,7 @@ export default function ContactoPage() {
       ],
     },
     {
-      icon: MessageCircle,
+      icon: WhatsAppIcon,
       title: "WhatsApp",
       details: [whatsappUrl, "Chatea con nosotros"],
     },
