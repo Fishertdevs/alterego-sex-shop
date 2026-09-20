@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { ArrowRight } from "lucide-react"
 import Link from "next/link"
+import { HeroCarousel } from "@/components/hero-carousel"
 
 export function HeroSection() {
   return (
@@ -25,8 +26,8 @@ export function HeroSection() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative z-10">
         <div className="text-center">
-          <div className="flex justify-center mb-8 animate-fade-in-up">
-            <div className="relative"></div>
+          <div className="mb-10 animate-fade-in-up">
+            <HeroCarousel />
           </div>
 
           <div className="stagger-animation">
