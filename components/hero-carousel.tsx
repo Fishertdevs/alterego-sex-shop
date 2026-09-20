@@ -5,18 +5,103 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react"
 import { getFeaturedProducts, convertSupabaseToProduct } from "@/lib/supabase-storage"
 
-type Slide = {
+type ProductSlide = {
+  kind: "product"
   id: string
+  eyebrow: string
   name: string
   description: string
   price: number
   original_price?: number
   discount?: number
   image: string
-  category: string
+  href: string
 }
 
-const AUTO_PLAY_MS = 5000
+type PromoSlide = {
+  kind: "promo"
+  id: string
+  eyebrow: string
+  title: string
+  subtitle: string
+  cta: string
+  href: string
+}
+
+type Slide = ProductSlide | PromoSlide
+
+const AUTO_PLAY_MS = 6000
+const MAX_SLIDES = 5
+
+function buildSlides(products: ReturnType<typeof convertSupabaseToProduct>[]): Slide[] {
+  if (products.length === 0) return []
+
+  const offers = [...products]
+    .filter((p) => (p.discount ?? 0) > 0)
+    .sort((a, b) => (b.discount ?? 0) - (a.discount ?? 0))
+
+  const top = products[0]
+  const usedIds = new Set<string>()
+  const slides: Slide[] = []
+
+  // 1. Producto top
+  slides.push({
+    kind: "product",
+    id: `top-${top.id}`,
+    eyebrow: "Lo más deseado",
+    name: top.name,
+    description: top.description,
+    price: top.price,
+    original_price: top.original_price,
+    discount: top.discount,
+    image: top.image,
+    href: "/productos",
+  })
+  usedIds.add(top.id)
+
+  // 2. Slide promocional de ofertas
+  slides.push({
+    kind: "promo",
+    id: "promo-ofertas",
+    eyebrow: "Ofertas",
+    title: "Conoce nuestras ofertas",
+    subtitle: "Descuentos exclusivos, seleccionados para despertar tus sentidos.",
+    cta: "Ver ofertas",
+    href: "/productos",
+  })
+
+  // 3-4. Mejores ofertas en producto
+  for (const offer of offers) {
+    if (slides.length >= MAX_SLIDES - 1) break
+    if (usedIds.has(offer.id)) continue
+    slides.push({
+      kind: "product",
+      id: `offer-${offer.id}`,
+      eyebrow: offer.discount ? `-${offer.discount}% OFF` : "Oferta",
+      name: offer.name,
+      description: offer.description,
+      price: offer.price,
+      original_price: offer.original_price,
+      discount: offer.discount,
+      image: offer.image,
+      href: "/productos",
+    })
+    usedIds.add(offer.id)
+  }
+
+  // 5. Cierre de marca
+  slides.push({
+    kind: "promo",
+    id: "promo-coleccion",
+    eyebrow: "Colección Premium",
+    title: "Elegancia & placer",
+    subtitle: "Explora la colección donde la sofisticación se encuentra con el deseo.",
+    cta: "Explorar colección",
+    href: "/productos",
+  })
+
+  return slides.slice(0, MAX_SLIDES)
+}
 
 export function HeroCarousel() {
   const [slides, setSlides] = useState<Slide[]>([])
@@ -30,10 +115,8 @@ export function HeroCarousel() {
       setLoading(true)
       const products = await getFeaturedProducts()
       const converted = products.map(convertSupabaseToProduct)
-      // Ofertas primero para destacar promociones
-      converted.sort((a, b) => (b.discount ?? 0) - (a.discount ?? 0))
       if (active) {
-        setSlides(converted)
+        setSlides(buildSlides(converted))
         setLoading(false)
       }
     }
@@ -45,7 +128,7 @@ export function HeroCarousel() {
 
   const goTo = useCallback(
     (index: number) => {
-      setCurrent((prev) => {
+      setCurrent(() => {
         if (slides.length === 0) return 0
         return (index + slides.length) % slides.length
       })
@@ -67,16 +150,14 @@ export function HeroCarousel() {
   }, [slides.length])
 
   if (loading) {
-    return (
-      <div className="relative w-full h-48 md:h-64 rounded-2xl overflow-hidden border border-border bg-muted/40 animate-pulse" />
-    )
+    return <div className="relative w-full h-[380px] sm:h-[440px] md:h-[500px] bg-muted/40 animate-pulse" />
   }
 
   if (slides.length === 0) return null
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-2xl border border-border shadow-2xl group"
+      className="relative w-full overflow-hidden group"
       role="region"
       aria-label="Promociones y ofertas"
     >
@@ -85,55 +166,92 @@ export function HeroCarousel() {
         style={{ transform: `translateX(-${current * 100}%)` }}
       >
         {slides.map((slide) => (
-          <Link
-            key={slide.id}
-            href="/productos"
-            className="relative flex-none w-full h-48 md:h-64 lg:h-72"
-          >
-            <img
-              src={slide.image || "/placeholder.svg"}
-              alt={slide.name}
-              className="absolute inset-0 h-full w-full object-cover"
-              crossOrigin="anonymous"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-background/10" />
+          <div key={slide.id} className="relative flex-none w-full h-[380px] sm:h-[440px] md:h-[500px]">
+            {slide.kind === "product" ? (
+              <>
+                <img
+                  src={slide.image || "/placeholder.svg"}
+                  alt={slide.name}
+                  className="absolute inset-0 h-full w-full object-cover object-center"
+                  crossOrigin="anonymous"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-background/20" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-transparent to-transparent" />
 
-            <div className="relative z-10 flex h-full flex-col justify-center gap-2 md:gap-3 px-6 md:px-12 max-w-xl">
-              {slide.discount ? (
-                <span className="w-fit rounded-full bg-accent px-3 py-1 text-xs md:text-sm font-semibold text-accent-foreground">
-                  {`-${slide.discount}% OFF`}
-                </span>
-              ) : (
-                <span className="w-fit rounded-full border border-accent/60 px-3 py-1 text-xs md:text-sm font-medium text-accent">
-                  Destacado
-                </span>
-              )}
+                <div className="relative z-10 flex h-full items-center">
+                  <div className="mx-auto w-full max-w-7xl px-6 md:px-12">
+                    <div className="max-w-lg space-y-4">
+                      <span
+                        className={
+                          slide.discount
+                            ? "inline-block w-fit rounded-full bg-accent px-4 py-1.5 text-xs md:text-sm font-semibold tracking-wide text-accent-foreground"
+                            : "inline-block w-fit rounded-full border border-accent/60 px-4 py-1.5 text-xs md:text-sm font-medium tracking-widest uppercase text-accent"
+                        }
+                      >
+                        {slide.eyebrow}
+                      </span>
 
-              <h3 className="font-serif text-2xl md:text-4xl font-bold text-foreground text-balance leading-tight">
-                {slide.name}
-              </h3>
+                      <h3 className="font-serif text-3xl md:text-5xl font-bold text-foreground text-balance leading-tight">
+                        {slide.name}
+                      </h3>
 
-              <p className="hidden md:block text-sm text-muted-foreground line-clamp-2 text-pretty">
-                {slide.description}
-              </p>
+                      <p className="hidden sm:block max-w-md text-sm md:text-base text-muted-foreground line-clamp-2 text-pretty">
+                        {slide.description}
+                      </p>
 
-              <div className="flex items-center gap-3">
-                <span className="text-xl md:text-2xl font-bold text-foreground">
-                  {`$${slide.price.toLocaleString("es-CO")}`}
-                </span>
-                {slide.original_price && slide.original_price > slide.price ? (
-                  <span className="text-sm md:text-base text-muted-foreground line-through">
-                    {`$${slide.original_price.toLocaleString("es-CO")}`}
-                  </span>
-                ) : null}
-              </div>
+                      <div className="flex items-baseline gap-3">
+                        <span className="text-2xl md:text-3xl font-bold text-foreground">
+                          {`$${slide.price.toLocaleString("es-CO")}`}
+                        </span>
+                        {slide.original_price && slide.original_price > slide.price ? (
+                          <span className="text-base md:text-lg text-muted-foreground line-through">
+                            {`$${slide.original_price.toLocaleString("es-CO")}`}
+                          </span>
+                        ) : null}
+                      </div>
 
-              <span className="mt-1 inline-flex w-fit items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors group-hover:bg-accent/90">
-                Ver producto
-                <ArrowRight className="h-4 w-4" />
-              </span>
-            </div>
-          </Link>
+                      <Link
+                        href={slide.href}
+                        className="mt-2 inline-flex w-fit items-center gap-2 rounded-lg bg-accent px-6 py-3 text-sm md:text-base font-medium text-accent-foreground transition-colors hover:bg-accent/90"
+                      >
+                        Ver producto
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="absolute inset-0 bg-gradient-to-br from-accent/25 via-background to-background" />
+                <div className="relative z-10 flex h-full items-center">
+                  <div className="mx-auto w-full max-w-7xl px-6 md:px-12">
+                    <div className="max-w-xl space-y-4">
+                      <span className="inline-block w-fit rounded-full border border-accent/60 px-4 py-1.5 text-xs md:text-sm font-medium tracking-widest uppercase text-accent">
+                        {slide.eyebrow}
+                      </span>
+
+                      <h3 className="font-serif text-4xl md:text-6xl font-bold text-foreground text-balance leading-tight">
+                        {slide.title}
+                      </h3>
+
+                      <p className="max-w-md text-base md:text-lg text-muted-foreground text-pretty">
+                        {slide.subtitle}
+                      </p>
+
+                      <Link
+                        href={slide.href}
+                        className="mt-2 inline-flex w-fit items-center gap-2 rounded-lg bg-accent px-6 py-3 text-sm md:text-base font-medium text-accent-foreground transition-colors hover:bg-accent/90"
+                      >
+                        {slide.cta}
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         ))}
       </div>
 
@@ -143,7 +261,7 @@ export function HeroCarousel() {
             type="button"
             onClick={prev}
             aria-label="Anterior"
-            className="absolute left-3 top-1/2 -translate-y-1/2 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-background/70 text-foreground backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-background"
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-background/60 text-foreground backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-background"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -151,12 +269,12 @@ export function HeroCarousel() {
             type="button"
             onClick={next}
             aria-label="Siguiente"
-            className="absolute right-3 top-1/2 -translate-y-1/2 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-background/70 text-foreground backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-background"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-background/60 text-foreground backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-background"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
 
-          <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 gap-2">
+          <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 gap-2">
             {slides.map((slide, index) => (
               <button
                 key={slide.id}
@@ -165,7 +283,7 @@ export function HeroCarousel() {
                 aria-label={`Ir a la promoción ${index + 1}`}
                 aria-current={index === current}
                 className={`h-2 rounded-full transition-all duration-300 ${
-                  index === current ? "w-6 bg-accent" : "w-2 bg-foreground/40 hover:bg-foreground/60"
+                  index === current ? "w-8 bg-accent" : "w-2 bg-foreground/40 hover:bg-foreground/60"
                 }`}
               />
             ))}

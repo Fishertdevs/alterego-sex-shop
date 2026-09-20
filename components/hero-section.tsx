@@ -24,12 +24,12 @@ export function HeroSection() {
         ></div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative z-10">
-        <div className="text-center">
-          <div className="mb-10 animate-fade-in-up">
-            <HeroCarousel />
-          </div>
+      <div className="w-full py-16 md:py-20 relative z-10">
+        <div className="mb-12 md:mb-16 animate-fade-in-up">
+          <HeroCarousel />
+        </div>
 
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="stagger-animation">
             <h1 className="text-5xl md:text-7xl font-serif font-bold text-foreground mb-6 text-balance tracking-wide">
               ALTER
