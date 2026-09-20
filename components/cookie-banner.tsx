@@ -27,39 +27,37 @@ export function CookieBanner() {
   if (!showBanner) return null
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 text-white p-6 shadow-lg border-t border-primary/20">
-      <div className="container mx-auto max-w-4xl">
-        <div className="flex items-start gap-4">
-          <div className="flex-1">
-            <h3 className="font-semibold text-lg mb-2">🍪 Uso de Cookies</h3>
-            <p className="text-sm text-gray-300 mb-4">
-              Utilizamos cookies para mejorar tu experiencia de navegación, personalizar contenido y analizar nuestro
-              tráfico. Al hacer clic en "Aceptar", aceptas el uso de cookies según nuestra{" "}
-              <a href="/politicas-cookies" className="text-primary hover:underline">
-                Política de Cookies
-              </a>
-              .
-            </p>
-            <div className="flex gap-3">
-              <Button onClick={handleAccept} className="bg-primary hover:bg-primary/90">
-                Aceptar
-              </Button>
-              <Button
-                onClick={handleClose}
-                variant="outline"
-                className="border-white/20 hover:bg-white/10 bg-transparent"
-              >
-                Cerrar
-              </Button>
-            </div>
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 text-white shadow-lg border-t border-primary/20">
+      <div className="container mx-auto max-w-5xl px-4 py-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="flex-1 text-xs leading-relaxed text-gray-300 sm:text-sm">
+            <span className="mr-1">🍪</span>
+            Usamos cookies para mejorar tu experiencia y analizar el tráfico. Consulta nuestra{" "}
+            <a href="/politicas-cookies" className="text-primary hover:underline">
+              Política de Cookies
+            </a>
+            .
+          </p>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button onClick={handleAccept} size="sm" className="bg-primary hover:bg-primary/90">
+              Aceptar
+            </Button>
+            <Button
+              onClick={handleClose}
+              size="sm"
+              variant="outline"
+              className="border-white/20 bg-transparent hover:bg-white/10"
+            >
+              Cerrar
+            </Button>
+            <button
+              onClick={handleClose}
+              className="ml-1 text-gray-400 transition-colors hover:text-white"
+              aria-label="Cerrar banner"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-white transition-colors"
-            aria-label="Cerrar banner"
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
       </div>
     </div>
